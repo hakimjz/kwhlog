@@ -1,0 +1,8 @@
+{
+  "name": "kwhlog",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/calc.test.js"
+  }
+}

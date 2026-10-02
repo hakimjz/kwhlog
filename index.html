@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>kWh Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>kWh Log</h1>
+    <span id="sync" class="sync">Menyambungkan…</span>
+  </header>
+
+  <section class="meter" aria-label="Status token">
+    <div class="lcd">
+      <div class="lcd-label">Sisa token</div>
+      <div class="lcd-num"><span id="tokenNum">---</span><small>kWh</small></div>
+      <div class="lcd-sub" id="tokenSub">Memuat data…</div>
+    </div>
+    <div class="meter-foot" id="lastRead"></div>
+    <div class="actions">
+      <button class="btn primary" id="btnRead">Catat meter</button>
+      <button class="btn" id="btnTopup">Beli token</button>
+    </div>
+    <div id="warn" class="warn" hidden></div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="ringkasan" aria-selected="true">Ringkasan</button>
+    <button class="tab" role="tab" data-tab="pola" aria-selected="false">Pola</button>
+    <button class="tab" role="tab" data-tab="riwayat" aria-selected="false">Riwayat</button>
+    <button class="tab" role="tab" data-tab="data" aria-selected="false">Data</button>
+  </nav>
+
+  <main>
+    <section class="pane" id="pane-ringkasan">
+      <div class="stats" id="stats"></div>
+      <h2>Kapan listrik terpakai</h2>
+      <div id="slots"></div>
+      <h2>Catatan penting</h2>
+      <ul class="insights" id="insights"></ul>
+    </section>
+
+    <section class="pane" id="pane-pola" hidden>
+      <h2 style="margin-top:12px">Pemakaian per hari</h2>
+      <p class="lead">Satu hari dihitung dari 05:00 sampai 05:00 berikutnya, supaya malam tetap masuk ke hari yang sama. Batang pucat berarti datanya belum mencakup satu hari penuh.</p>
+      <div class="chartwrap" id="chart"></div>
+      <div class="legend" id="legend"></div>
+      <h2>Beban per kondisi</h2>
+      <p class="lead">Dihitung dari label kondisi di setiap catatan. Beban AC hanya memakai interval 4 jam atau kurang, supaya tidak tercampur jam tanpa AC.</p>
+      <div class="tblwrap" id="tagtable"></div>
+    </section>
+
+    <section class="pane" id="pane-riwayat" hidden>
+      <p class="lead" style="margin-top:12px">Setiap baris adalah pemakaian sejak catatan sebelumnya. Label kondisi menjelaskan apa yang terjadi selama interval itu.</p>
+      <ul class="hist" id="hist"></ul>
+    </section>
+
+    <section class="pane" id="pane-data" hidden>
+      <h2 style="margin-top:12px">Tarif</h2>
+      <div class="panel">
+        <label class="field"><span>Tarif default (Rp per kWh)</span>
+          <input type="number" id="setTarif" step="0.01" inputmode="decimal">
+          <small>Dipakai sampai ada catatan beli token. Setelah itu tarif dihitung dari nominal dibagi kWh yang masuk, sudah termasuk PPJ dan biaya admin.</small>
+        </label>
+        <button class="btn small" id="saveTarif">Simpan tarif</button>
+        <div class="msg" id="tarifMsg"></div>
+      </div>
+
+      <h2>Tambah dari spreadsheet</h2>
+      <div class="panel">
+        <label class="field"><span>Tempel baris data</span>
+          <textarea id="importText" placeholder="2026-09-22	7:10	2026-09-22 07:10	164.54"></textarea>
+          <small>Format kolom: Tanggal, Waktu, (Datetime), kWh, … catatan di kolom terakhir. Baris dengan waktu yang sudah ada akan dilewati.</small>
+        </label>
+        <button class="btn small" id="doImport">Tambahkan data</button>
+        <div class="msg" id="importMsg"></div>
+      </div>
+
+      <h2>Ekspor</h2>
+      <div class="panel">
+        <div class="row">
+          <button class="btn small" id="dlCsv">Unduh CSV</button>
+          <button class="btn small" id="copyCsv">Salin CSV</button>
+        </div>
+        <div class="msg" id="exportMsg"></div>
+      </div>
+
+      <h2>Penyimpanan</h2>
+      <p class="lead" id="storageInfo"></p>
+    </section>
+  </main>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <div class="sheet">
+    <h3 id="dlgTitle">Catat meter</h3>
+    <label class="field"><span>Waktu</span><input type="datetime-local" id="fTs"></label>
+    <label class="field"><span id="fKwhLabel">Angka di meter (kWh)</span>
+      <input type="text" class="big" id="fKwh" inputmode="decimal" autocomplete="off" placeholder="164,54">
+    </label>
+    <div id="topupFields" hidden>
+      <label class="field"><span>kWh yang masuk dari token</span><input type="text" id="fAdded" inputmode="decimal" placeholder="68,5"></label>
+      <label class="field"><span>Nominal yang dibayar (Rp)</span><input type="text" id="fRp" inputmode="numeric" placeholder="100000"></label>
+    </div>
+    <div id="readFields">
+      <div class="field"><span>Kondisi sejak catatan terakhir</span>
+        <div class="chips" id="fTags"></div>
+      </div>
+      <label class="field" id="suhuWrap" hidden><span>Suhu AC (°C)</span><input type="number" id="fSuhu" inputmode="numeric" min="16" max="30"></label>
+    </div>
+    <label class="field"><span>Catatan (opsional)</span><input type="text" id="fNote" autocomplete="off"></label>
+    <div class="msg err" id="fMsg"></div>
+    <div class="foot">
+      <button class="btn" id="fCancel">Batal</button>
+      <button class="btn primary" id="fSave">Simpan</button>
+    </div>
+  </div>
+</dialog>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
