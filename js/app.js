@@ -237,6 +237,7 @@ $('copyCsv').onclick = async () => {
 
 /* ---------- start ---------- */
 const STATUS = {
+  init: ['Memuat…', false, 'Memuat…'],
   nocfg: ['Hanya di perangkat ini', true, 'Supabase belum diisi di js/config.js, jadi data disimpan di browser perangkat ini saja.'],
   offline: ['Offline, memakai cache', true, 'Layanan sinkron tidak terjangkau. Data ditampilkan dari cache di perangkat ini.'],
   out: ['Belum masuk', true, 'Belum masuk, jadi catatan baru disimpan di perangkat ini dan akan dikirim ke cloud setelah kamu masuk.'],
@@ -245,23 +246,28 @@ const STATUS = {
   error: ['Sinkron gagal', true, 'Tidak bisa menyambung ke cloud. Data ditampilkan dari cache; coba muat ulang halaman.']
 };
 function renderStatus() {
-  const [label, off, info] = STATUS[store.getStatus()];
-  $('sync').textContent = label; $('sync').classList.toggle('off', off);
+  const st = store.getStatus(), u = store.getUser();
+  const [label, off, info] = STATUS[st];
+  // header: kalau sudah masuk, tampilkan email (plus keadaan sinkron hanya bila bermasalah) dan tombol Keluar
+  $('sync').textContent = u ? u.email + (st === 'ok' ? '' : ' · ' + label) : label;
+  $('sync').classList.toggle('off', u ? st === 'error' : off);
+  $('btnLogout').hidden = !u;
   $('storageInfo').textContent = info;
-  const u = store.getUser();
-  $('authOut').hidden = !!u; $('authIn').hidden = !u;
-  if (u) $('authWho').textContent = 'Masuk sebagai ' + u.email;
-  $('authSend').disabled = store.getStatus() === 'nocfg' || store.getStatus() === 'offline';
+  $('loginCard').hidden = st !== 'out';
 }
-$('authSend').onclick = async () => {
-  const email = $('authEmail').value.trim();
-  if (!email) { $('authMsg').textContent = 'Isi email.'; return; }
-  $('authSend').disabled = true; $('authMsg').textContent = 'Mengirim…';
-  try { await store.signIn(email); $('authMsg').textContent = 'Link masuk dikirim. Buka email di perangkat ini lalu ketuk linknya.'; }
-  catch (e) { $('authMsg').textContent = 'Gagal mengirim link: ' + (e && e.message ? e.message : 'coba lagi'); }
-  renderStatus();
-};
-$('authOutBtn').onclick = async () => { await store.signOut(); $('authMsg').textContent = ''; };
+function showLoginForm(sent) { $('loginForm').hidden = sent; $('loginSent').hidden = !sent; }
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = $('loginEmail').value.trim();
+  if (!email) { $('loginMsg').textContent = 'Isi email.'; return; }
+  $('loginSend').disabled = true; $('loginMsg').textContent = '';
+  try { await store.signIn(email); showLoginForm(true); }
+  catch (err) { $('loginMsg').textContent = 'Gagal mengirim link: ' + (err && err.message ? err.message : 'coba lagi'); }
+  $('loginSend').disabled = false;
+});
+$('loginAgain').onclick = () => { showLoginForm(false); $('loginEmail').focus(); };
+$('btnLogout').onclick = () => store.signOut();
+if (store.getAuthError()) $('loginMsg').textContent = 'Link login tidak berlaku atau sudah kedaluwarsa. Kirim link baru.';
 
 store.subscribe(() => { render(); renderStatus(); });
 renderStatus();

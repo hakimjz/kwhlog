@@ -34,6 +34,9 @@ button,input,textarea{font:inherit;color:inherit}
 .top h1{font-size:1.25rem;font-weight:800;letter-spacing:-.01em;margin:0}
 .sync{font-size:.8rem;color:var(--muted)}
 .sync.off{color:var(--bad)}
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.who .sync{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.login{margin-bottom:14px}
 
 /* Meter body */
 .meter{background:var(--case);border-radius:22px;padding:14px;border:1px solid var(--line)}
@@ -109,7 +112,7 @@ tr:last-child td{border-bottom:0}
 .field{display:block;margin:0 0 14px}
 .field > span{display:block;font-size:.85rem;font-weight:600;margin-bottom:5px}
 .field small{display:block;color:var(--muted);font-size:.8rem;margin-top:4px}
-input[type=text],input[type=number],input[type=datetime-local],textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+input[type=text],input[type=email],input[type=number],input[type=datetime-local],textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
 input.big{font-family:"Share Tech Mono",ui-monospace,monospace;font-size:1.6rem;padding:10px 12px}
 textarea{min-height:130px;font-size:.85rem;font-family:ui-monospace,Menlo,Consolas,monospace}
 .chips{display:flex;flex-wrap:wrap;gap:8px}

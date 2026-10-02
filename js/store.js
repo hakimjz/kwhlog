@@ -23,9 +23,18 @@ let sb = null;             // client Supabase (null kalau belum dikonfigurasi at
 let user = null;
 let channel = null;
 let started = false;       // sinkronisasi remote sudah berjalan untuk sesi ini
-// 'nocfg' | 'offline' | 'out' | 'sync' | 'ok' | 'error'
-let status = 'nocfg';
+// 'init' | 'nocfg' | 'offline' | 'out' | 'sync' | 'ok' | 'error'
+let status = 'init';
 const listeners = new Set();
+
+// Hasil callback magic link ada di URL (#access_token=... atau #error_description=...).
+// Galat dibaca sekarang, sebelum client Supabase menyentuh URL; token dibersihkan setelah sesi terbentuk.
+const AUTH_URL_RE = /access_token|refresh_token|error_description|[?&]code=/;
+function cleanUrl() {
+  if (AUTH_URL_RE.test(location.hash + location.search)) history.replaceState(null, '', location.pathname);
+}
+const authError = new URLSearchParams(location.hash.slice(1) + '&' + location.search.slice(1)).get('error_description');
+if (authError) cleanUrl(); // tidak ada token yang perlu dijaga pada kasus galat
 
 const emit = () => listeners.forEach(fn => fn());
 function setStatus(s) { status = s; emit(); }
@@ -40,6 +49,7 @@ export const getEntries = () => entries;
 export const getSettings = () => settings;
 export const getStatus = () => status;
 export const getUser = () => user;
+export const getAuthError = () => authError;
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
 /* ---------- start ---------- */
@@ -61,11 +71,11 @@ export async function init() {
     sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   } catch (e) { setStatus('offline'); return; } // CDN tak terjangkau: tetap jalan dari cache
 
-  setStatus('out');
+  // Status 'out' baru ditetapkan oleh INITIAL_SESSION (tanpa sesi), supaya form login tidak berkedip saat sesi tersimpan.
   // Jangan memanggil API Supabase langsung di dalam callback ini (bisa deadlock): tunda dengan setTimeout.
   sb.auth.onAuthStateChange((event, session) => {
     user = session ? session.user : null;
-    if (user) setTimeout(startRemote, 0);
+    if (user) { cleanUrl(); setTimeout(startRemote, 0); }
     else if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') { stopRemote(); setStatus('out'); }
   });
   window.addEventListener('online', () => { if (user && !started) startRemote(); });

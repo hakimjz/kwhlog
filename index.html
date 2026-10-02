@@ -13,8 +13,25 @@
 <div class="app">
   <header class="top">
     <h1>kWh Log</h1>
-    <span id="sync" class="sync">Menyambungkan…</span>
+    <div class="who">
+      <span id="sync" class="sync">Memuat…</span>
+      <button class="btn small" id="btnLogout" hidden>Keluar</button>
+    </div>
   </header>
+
+  <section class="panel login" id="loginCard" aria-label="Masuk" hidden>
+    <form id="loginForm">
+      <label class="field"><span>Masuk supaya data tersinkron di HP dan laptop</span>
+        <input type="email" id="loginEmail" autocomplete="email" inputmode="email" placeholder="email@kamu.com" required>
+      </label>
+      <button class="btn primary" id="loginSend" type="submit">Kirim link login</button>
+    </form>
+    <div id="loginSent" hidden>
+      <p class="lead" style="margin-top:0"><b>Cek email kamu.</b> Ketuk link di email itu, di perangkat ini, untuk masuk.</p>
+      <button class="btn small" id="loginAgain" type="button">Pakai email lain</button>
+    </div>
+    <div class="msg err" id="loginMsg"></div>
+  </section>
 
   <section class="meter" aria-label="Status token">
     <div class="lcd">
@@ -91,21 +108,7 @@
         <div class="msg" id="exportMsg"></div>
       </div>
 
-      <h2>Akun dan sinkron</h2>
-      <div class="panel">
-        <div id="authOut">
-          <label class="field"><span>Email</span>
-            <input type="email" id="authEmail" autocomplete="email" inputmode="email" style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px">
-            <small>Kami kirim link masuk ke email ini. Tidak perlu password.</small>
-          </label>
-          <button class="btn small" id="authSend">Kirim link masuk</button>
-        </div>
-        <div id="authIn" hidden>
-          <p class="lead" id="authWho" style="margin-top:0"></p>
-          <button class="btn small" id="authOutBtn">Keluar</button>
-        </div>
-        <div class="msg" id="authMsg"></div>
-      </div>
+      <h2>Penyimpanan</h2>
       <p class="lead" id="storageInfo"></p>
     </section>
   </main>
