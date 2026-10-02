@@ -159,8 +159,11 @@ $('fSave').onclick = async () => {
     obj = { type: 'topup', ts, kwh, added, note: $('fNote').value.trim() };
     if (paid > 0) obj.rp = paid;
   }
-  obj.id = idFor(obj.type, ts);
-  const dup = entries.find(e => e.id === obj.id && e.id !== editId);
+  // ts tidak berubah saat edit: pertahankan id yang sama (update baris yang sama, tanpa delete).
+  const old = editId && entries.find(e => e.id === editId);
+  obj.id = old && old.ts === ts ? editId : idFor(ts);
+  // unik per ts di database, jadi cek berdasarkan ts, bukan id
+  const dup = entries.find(e => e.ts === ts && e.id !== obj.id);
   if (dup) { $('fMsg').textContent = 'Sudah ada catatan di menit yang sama. Ubah waktunya sedikit.'; return; }
   $('fSave').disabled = true;
   try {
@@ -200,7 +203,7 @@ $('doImport').onclick = async () => {
     let note = ''; const lastCol = (c[c.length - 1] || '').trim();
     if (c.length - 1 > kIdx && lastCol && isNaN(num(lastCol)) && !/^-?[\d.,:]+$/.test(lastCol)) note = lastCol;
     const ts = date + 'T' + pad(tmm[1]) + ':' + tmm[2];
-    out.push({ id: idFor('reading', ts), type: 'reading', ts, kwh, tags: inferTags(note), note });
+    out.push({ id: idFor(ts), type: 'reading', ts, kwh, tags: inferTags(note), note });
   }
   if (!out.length) { $('importMsg').textContent = 'Tidak ada baris yang bisa dibaca. Pastikan ada kolom tanggal (2026-09-22), jam (7:10), dan kWh.'; return; }
   const have = new Set(store.getEntries().map(e => e.id)); const fresh = out.filter(o => !have.has(o.id));

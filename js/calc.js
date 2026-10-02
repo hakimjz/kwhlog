@@ -45,7 +45,8 @@ export function num(s) {
   return parseFloat(s);
 }
 export function rpNum(s) { return parseFloat(String(s || '').replace(/[^\d]/g, '')); }
-export function idFor(type, ts) { return (type === 'topup' ? 't-' : 'r-') + ts.replace(/[-T:]/g, ''); }
+// Id hanya bergantung pada ts (semua tipe berprefix 'r-'), karena (user_id, ts) harus unik.
+export function idFor(ts) { return 'r-' + ts.replace(/[-T:]/g, ''); }
 
 export function median(a) {
   if (!a.length) return null;

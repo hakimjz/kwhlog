@@ -2,7 +2,7 @@
 -- Jalankan sekali di Supabase SQL Editor (Dashboard > SQL Editor > New query).
 
 create table if not exists public.kwhlog_readings (
-  id         text        not null,              -- 'r-YYYYMMDDHHMM' atau 't-...' untuk beli token
+  id         text        not null,              -- 'r-YYYYMMDDHHMM' dari ts, untuk semua tipe
   user_id    uuid        not null references auth.users (id) on delete cascade,
   ts         timestamp   not null,              -- waktu lokal (WIB), tanpa timezone, sengaja
   type       text        not null default 'reading' check (type in ('reading','topup')),
