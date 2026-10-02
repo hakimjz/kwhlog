@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Listrik Rumah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF0EA; --surface:#FAFBF8; --ink:#1C2530; --muted:#5B6673; --line:#D6DAD1;
+  --case:#DDE1D8; --lcd:#C6D59F; --lcd-ink:#24311B; --lcd-soft:rgba(36,49,27,.62);
+  --accent:#2E3F7A; --on-accent:#FFFFFF; --chip:#E4E7EE; --chip-on:#2E3F7A; --chip-on-ink:#fff;
+  --warn-bg:#FBEBC8; --warn-ink:#644500; --bad:#A33A2A; --bad-bg:#F6DDD7;
+  --pagi:#F0C75E; --siang:#D99A2B; --sore:#7A8BC9; --malam:#2E3F7A;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12161C; --surface:#1A2029; --ink:#E4E8EE; --muted:#9AA5B3; --line:#2B3340;
+    --case:#232A35; --lcd:#9FB277; --lcd-ink:#172010; --lcd-soft:rgba(23,32,16,.66);
+    --accent:#A9B9F2; --on-accent:#141A2A; --chip:#262E3A; --chip-on:#A9B9F2; --chip-on-ink:#141A2A;
+    --warn-bg:#3A2F14; --warn-ink:#F3D58A; --bad:#FF8F7D; --bad-bg:#3A1F1B;
+    --pagi:#F0C75E; --siang:#D99A2B; --sore:#8C9CD8; --malam:#4F66BD;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12161C; --surface:#1A2029; --ink:#E4E8EE; --muted:#9AA5B3; --line:#2B3340;
+  --case:#232A35; --lcd:#9FB277; --lcd-ink:#172010; --lcd-soft:rgba(23,32,16,.66);
+  --accent:#A9B9F2; --on-accent:#141A2A; --chip:#262E3A; --chip-on:#A9B9F2; --chip-on-ink:#141A2A;
+  --warn-bg:#3A2F14; --warn-ink:#F3D58A; --bad:#FF8F7D; --bad-bg:#3A1F1B;
+  --pagi:#F0C75E; --siang:#D99A2B; --sore:#8C9CD8; --malam:#4F66BD;
+  color-scheme: dark;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+.app{max-width:760px;margin:0 auto;padding:16px 16px 48px}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 2px 14px}
+.top h1{font-size:1.25rem;font-weight:800;letter-spacing:-.01em;margin:0}
+.sync{font-size:.8rem;color:var(--muted)}
+.sync.off{color:var(--bad)}
+
+/* Meter body */
+.meter{background:var(--case);border-radius:22px;padding:14px;border:1px solid var(--line)}
+.lcd{background:var(--lcd);color:var(--lcd-ink);border-radius:10px;padding:14px 16px 12px;box-shadow:inset 0 2px 6px rgba(0,0,0,.18),inset 0 0 0 1px rgba(0,0,0,.08)}
+.lcd-label{font-size:.82rem;font-weight:600;color:var(--lcd-soft)}
+.lcd-num{font-family:"Share Tech Mono",ui-monospace,Menlo,Consolas,monospace;font-size:clamp(3.2rem,15vw,5rem);line-height:1;letter-spacing:.02em;display:flex;align-items:baseline;gap:10px;margin:6px 0 8px}
+.lcd-num small{font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:1rem;font-weight:700;color:var(--lcd-soft)}
+.lcd-sub{font-size:.95rem;font-weight:600}
+.meter-foot{font-size:.85rem;color:var(--muted);margin:10px 4px 12px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.btn.small{padding:6px 10px;font-size:.85rem;border-radius:9px;font-weight:600}
+.btn.danger{color:var(--bad)}
+.btn:focus-visible,.chip:focus-visible,.tab:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.warn{margin-top:12px;background:var(--warn-bg);color:var(--warn-ink);border-radius:12px;padding:10px 12px;font-size:.9rem;font-weight:500}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin:22px 0 6px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{background:none;border:0;padding:10px 12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+section.pane{padding-top:10px}
+section.pane[hidden]{display:none}
+h2{font-size:1.05rem;font-weight:700;margin:22px 0 10px}
+p.lead{color:var(--muted);margin:4px 0 12px;font-size:.92rem;max-width:62ch}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.stat{padding:12px 14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.stat:nth-child(2n){border-right:0}
+.stat:nth-last-child(-n+2){border-bottom:0}
+.stat .k{font-size:.8rem;color:var(--muted);font-weight:600}
+.stat .v{font-size:1.3rem;font-weight:800;letter-spacing:-.01em;margin-top:2px}
+.stat .s{font-size:.82rem;color:var(--muted)}
+
+/* Slot bar */
+.slotbar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:4px 0 12px;background:var(--line)}
+.slotbar span{display:block;height:100%}
+.slotrows{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 12px;align-items:center;font-size:.9rem}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:6px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.dim{color:var(--muted)}
+.insights{margin:0;padding-left:1.1em}
+.insights li{margin:6px 0;max-width:64ch}
+
+/* Chart */
+.chartwrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:8px 6px 2px}
+.chartwrap svg text{fill:var(--muted);font-size:10px;font-family:"Plus Jakarta Sans",sans-serif}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.85rem;margin:10px 2px}
+
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:.8rem;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+
+/* History */
+.hist{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.hist li{padding:12px 14px;border-bottom:1px solid var(--line)}
+.hist li:last-child{border-bottom:0}
+.hrow{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.htime{font-weight:600;font-size:.92rem}
+.hval{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hmeta{font-size:.84rem;color:var(--muted);margin-top:2px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tag{font-size:.78rem;background:var(--chip);border-radius:999px;padding:2px 9px;font-weight:600}
+.flag{font-size:.8rem;margin-top:6px;padding:4px 8px;border-radius:8px;background:var(--warn-bg);color:var(--warn-ink);display:inline-block}
+.flag.bad{background:var(--bad-bg);color:var(--bad)}
+.hbtns{display:flex;gap:6px;margin-top:8px}
+.topup .hval{color:var(--accent)}
+
+/* Forms */
+.field{display:block;margin:0 0 14px}
+.field > span{display:block;font-size:.85rem;font-weight:600;margin-bottom:5px}
+.field small{display:block;color:var(--muted);font-size:.8rem;margin-top:4px}
+input[type=text],input[type=number],input[type=datetime-local],textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+input.big{font-family:"Share Tech Mono",ui-monospace,monospace;font-size:1.6rem;padding:10px 12px}
+textarea{min-height:130px;font-size:.85rem;font-family:ui-monospace,Menlo,Consolas,monospace}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--chip);border-radius:999px;padding:7px 13px;font-weight:600;font-size:.88rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--chip-on);color:var(--chip-on-ink);border-color:transparent}
+.panel{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.msg{font-size:.88rem;margin-top:8px}
+.msg.err{color:var(--bad)}
+
+dialog{border:0;padding:0;background:transparent;max-width:none;max-height:none;width:100%;height:100%;margin:0}
+dialog::backdrop{background:rgba(10,14,20,.45)}
+.sheet{position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:min(560px,100%);max-height:92%;overflow:auto;background:var(--bg);color:var(--ink);border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+@media (min-width:640px){.sheet{bottom:auto;top:50%;transform:translate(-50%,-50%);border-radius:20px}}
+.sheet h3{margin:0 0 14px;font-size:1.1rem}
+.sheet .foot{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:6px}
+@media (prefers-reduced-motion:no-preference){ dialog[open] .sheet{animation:rise .18s ease-out} @keyframes rise{from{opacity:.4;translate:0 18px}to{opacity:1;translate:0 0}} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>Listrik rumah</h1>
+    <span id="sync" class="sync">Menyambungkan…</span>
+  </header>
+
+  <section class="meter" aria-label="Status token">
+    <div class="lcd">
+      <div class="lcd-label">Sisa token</div>
+      <div class="lcd-num"><span id="tokenNum">---</span><small>kWh</small></div>
+      <div class="lcd-sub" id="tokenSub">Memuat data…</div>
+    </div>
+    <div class="meter-foot" id="lastRead"></div>
+    <div class="actions">
+      <button class="btn primary" id="btnRead">Catat meter</button>
+      <button class="btn" id="btnTopup">Beli token</button>
+    </div>
+    <div id="warn" class="warn" hidden></div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="ringkasan" aria-selected="true">Ringkasan</button>
+    <button class="tab" role="tab" data-tab="pola" aria-selected="false">Pola</button>
+    <button class="tab" role="tab" data-tab="riwayat" aria-selected="false">Riwayat</button>
+    <button class="tab" role="tab" data-tab="data" aria-selected="false">Data</button>
+  </nav>
+
+  <main>
+    <section class="pane" id="pane-ringkasan">
+      <div class="stats" id="stats"></div>
+      <h2>Kapan listrik terpakai</h2>
+      <div id="slots"></div>
+      <h2>Catatan penting</h2>
+      <ul class="insights" id="insights"></ul>
+    </section>
+
+    <section class="pane" id="pane-pola" hidden>
+      <h2 style="margin-top:12px">Pemakaian per hari</h2>
+      <p class="lead">Satu hari dihitung dari 05:00 sampai 05:00 berikutnya, supaya malam tetap masuk ke hari yang sama. Batang pucat berarti datanya belum mencakup satu hari penuh.</p>
+      <div class="chartwrap" id="chart"></div>
+      <div class="legend" id="legend"></div>
+      <h2>Beban per kondisi</h2>
+      <p class="lead">Dihitung dari label kondisi di setiap catatan. Beban AC hanya memakai interval 4 jam atau kurang, supaya tidak tercampur jam tanpa AC.</p>
+      <div class="tblwrap" id="tagtable"></div>
+    </section>
+
+    <section class="pane" id="pane-riwayat" hidden>
+      <p class="lead" style="margin-top:12px">Setiap baris adalah pemakaian sejak catatan sebelumnya. Label kondisi menjelaskan apa yang terjadi selama interval itu.</p>
+      <ul class="hist" id="hist"></ul>
+    </section>
+
+    <section class="pane" id="pane-data" hidden>
+      <h2 style="margin-top:12px">Tarif</h2>
+      <div class="panel">
+        <label class="field"><span>Tarif default (Rp per kWh)</span>
+          <input type="number" id="setTarif" step="0.01" inputmode="decimal">
+          <small>Dipakai sampai ada catatan beli token. Setelah itu tarif dihitung dari nominal dibagi kWh yang masuk, sudah termasuk PPJ dan biaya admin.</small>
+        </label>
+        <button class="btn small" id="saveTarif">Simpan tarif</button>
+        <div class="msg" id="tarifMsg"></div>
+      </div>
+
+      <h2>Tambah dari spreadsheet</h2>
+      <div class="panel">
+        <label class="field"><span>Tempel baris data</span>
+          <textarea id="importText" placeholder="2026-09-22	7:10	2026-09-22 07:10	164.54"></textarea>
+          <small>Format kolom: Tanggal, Waktu, (Datetime), kWh, … catatan di kolom terakhir. Baris dengan waktu yang sudah ada akan dilewati.</small>
+        </label>
+        <button class="btn small" id="doImport">Tambahkan data</button>
+        <div class="msg" id="importMsg"></div>
+      </div>
+
+      <h2>Ekspor</h2>
+      <div class="panel">
+        <div class="row">
+          <button class="btn small" id="dlCsv" hidden>Unduh CSV</button>
+          <button class="btn small" id="copyCsv">Salin CSV</button>
+        </div>
+        <div class="msg" id="exportMsg"></div>
+      </div>
+
+      <h2>Penyimpanan</h2>
+      <p class="lead" id="storageInfo"></p>
+    </section>
+  </main>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <div class="sheet">
+    <h3 id="dlgTitle">Catat meter</h3>
+    <label class="field"><span>Waktu</span><input type="datetime-local" id="fTs"></label>
+    <label class="field"><span id="fKwhLabel">Angka di meter (kWh)</span>
+      <input type="text" class="big" id="fKwh" inputmode="decimal" autocomplete="off" placeholder="164,54">
+    </label>
+    <div id="topupFields" hidden>
+      <label class="field"><span>kWh yang masuk dari token</span><input type="text" id="fAdded" inputmode="decimal" placeholder="68,5"></label>
+      <label class="field"><span>Nominal yang dibayar (Rp)</span><input type="text" id="fRp" inputmode="numeric" placeholder="100000"></label>
+    </div>
+    <div id="readFields">
+      <div class="field"><span>Kondisi sejak catatan terakhir</span>
+        <div class="chips" id="fTags"></div>
+      </div>
+      <label class="field" id="suhuWrap" hidden><span>Suhu AC (°C)</span><input type="number" id="fSuhu" inputmode="numeric" min="16" max="30"></label>
+    </div>
+    <label class="field"><span>Catatan (opsional)</span><input type="text" id="fNote" autocomplete="off"></label>
+    <div class="msg err" id="fMsg"></div>
+    <div class="foot">
+      <button class="btn" id="fCancel">Batal</button>
+      <button class="btn primary" id="fSave">Simpan</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function(){
+const TAGS=[{k:'ac',label:'AC nyala'},{k:'noac',label:'Tanpa AC'},{k:'kosong',label:'Rumah kosong'},{k:'cuci',label:'Mesin cuci'},{k:'pompa',label:'Pompa air'}];
+const TAGLABEL=Object.fromEntries(TAGS.map(t=>[t.k,t.label]));
+const SLOTS=[
+  {k:'pagi',label:'Pagi',range:'05–09',c:'var(--pagi)'},
+  {k:'siang',label:'Siang',range:'09–17',c:'var(--siang)'},
+  {k:'sore',label:'Sore',range:'17–22',c:'var(--sore)'},
+  {k:'malam',label:'Malam',range:'22–05',c:'var(--malam)'}
+];
+const LS_KEY='listrikRumah.v1';
+const $=id=>document.getElementById(id);
+
+let entries=[]; let settings={tarif:1444.70};
+let store=null; let dl=null;
+
+/* ---------- helpers ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const nf=(n,d=0)=>Number(n).toLocaleString('id-ID',{minimumFractionDigits:d,maximumFractionDigits:d});
+const rp=n=>'Rp'+nf(Math.round(n));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function parseTs(s){const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(s);return m?new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5]):new Date(NaN)}
+function fmtTs(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes())}
+function dayKey(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function fmtDT(d){return d.toLocaleDateString('id-ID',{day:'numeric',month:'short'})+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
+function fmtHM(d){return pad(d.getHours())+':'+pad(d.getMinutes())}
+function dur(h){let m=Math.round(h*60);return Math.floor(m/60)+':'+pad(m%60)}
+function num(s){if(s==null)return NaN;s=String(s).trim().replace(/\s/g,'');if(!s)return NaN;
+  if(s.includes(',')&&s.includes('.')){ if(s.lastIndexOf(',')>s.lastIndexOf('.')) s=s.replace(/\./g,'').replace(',','.'); else s=s.replace(/,/g,''); }
+  else if(s.includes(',')) s=s.replace(',','.');
+  return parseFloat(s)}
+function rpNum(s){return parseFloat(String(s||'').replace(/[^\d]/g,''))}
+function idFor(type,ts){return (type==='topup'?'t-':'r-')+ts.replace(/[-T:]/g,'')}
+function median(a){if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2}
+function slotOf(h){if(h>=5&&h<9)return'pagi';if(h>=9&&h<17)return'siang';if(h>=17&&h<22)return'sore';return'malam'}
+function inferTags(note){const n=(note||'').toLowerCase();const t=[];
+  if(/no ac|tanpa ac/.test(n)) t.push('noac');
+  else if(/\bac (on|nyala)\b|ac baru mati|ac nyala \d/.test(n) && !/ac nyala jam/.test(n)) t.push('ac');
+  if(/ditinggal|kosong|baru balik/.test(n)) t.push('kosong');
+  if(/mesin cuci|nyuci|cuci/.test(n)) t.push('cuci');
+  if(/pompa/.test(n)) t.push('pompa');
+  return t}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---------- storage ---------- */
+async function getCap(name){
+  for(let i=0;i<40&&!(window.claude&&window.claude.use);i++) await sleep(100);
+  if(!(window.claude&&window.claude.use)) return null;
+  try{return await window.claude.use(name)}catch(e){return null}
+}
+function setSync(text,off){const el=$('sync');el.textContent=text;el.classList.toggle('off',!!off)}
+
+function localLoad(){try{const j=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(j){entries=j.entries||[];settings=Object.assign(settings,j.settings||{})}}catch(e){}}
+function localSave(){try{localStorage.setItem(LS_KEY,JSON.stringify({entries,settings}))}catch(e){}}
+
+function subscribeDb(db){
+  db.collection('readings').onSnapshot(snap=>{
+    entries=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
+    setSync(snap.metadata.fromCache?'Menyinkronkan…':'Tersinkron');
+    render();
+  },err=>{
+    setSync('Sinkron terputus',true);
+    if(err&&err.code==='unavailable') setTimeout(()=>subscribeDb(db),3000);
+  });
+  db.doc('config/settings').onSnapshot(s=>{
+    if(s.exists) settings=Object.assign({tarif:1444.70},s.data());
+    render();
+  },()=>{});
+}
+
+async function initStore(){
+  const db=await getCap('db');
+  if(db){
+    store={mode:'db',
+      put:async e=>{const {id,...body}=e;await db.collection('readings').doc(id).set(body)},
+      del:async id=>{await db.collection('readings').doc(id).delete()},
+      saveSettings:async s=>{await db.doc('config/settings').set(s)}
+    };
+    $('storageInfo').textContent='Data tersimpan di cloud dan tersinkron otomatis antara HP dan laptop selama kamu membuka halaman ini dengan akun yang sama.';
+    subscribeDb(db);
+  }else{
+    localLoad();
+    store={mode:'local',
+      put:async e=>{entries=entries.filter(x=>x.id!==e.id);entries.push(e);localSave();render()},
+      del:async id=>{entries=entries.filter(x=>x.id!==id);localSave();render()},
+      saveSettings:async s=>{settings=s;localSave();render()}
+    };
+    setSync('Hanya di perangkat ini',true);
+    $('storageInfo').textContent='Sinkron cloud tidak tersedia di tampilan ini, jadi data disimpan di browser perangkat ini saja. Buka halaman lewat claude.ai untuk sinkron antar perangkat.';
+    render();
+  }
+  dl=await getCap('downloads');
+  $('dlCsv').hidden=!dl;
+}
+
+/* ---------- compute ---------- */
+function compute(){
+  const list=entries.filter(e=>e&&e.ts&&isFinite(e.kwh)).slice().sort((a,b)=>a.ts<b.ts?-1:a.ts>b.ts?1:0);
+  const topups=list.filter(e=>e.type==='topup'&&e.rp>0&&e.added>0);
+  const rateFor=t=>{let r=settings.tarif||1444.70;for(const tp of topups){if(tp.ts<=t) r=tp.rp/tp.added}return r};
+  const iv=[];
+  for(let i=1;i<list.length;i++){
+    const prev=list[i-1],cur=list[i];
+    const start=parseTs(prev.ts),end=parseTs(cur.ts);
+    const h=(end-start)/36e5; if(!(h>0)) continue;
+    const used=cur.type==='topup'?prev.kwh-(cur.kwh-(cur.added||0)):prev.kwh-cur.kwh;
+    const rate=rateFor(prev.ts);
+    iv.push({prev,cur,start,end,h,used,kw:used/h,cost:used*rate,rate,bad:used<-0.005,tags:cur.tags||[],flags:[]});
+  }
+  const valid=iv.filter(x=>!x.bad);
+  const midHour=x=>new Date((+x.start + +x.end)/2).getHours();
+  let baseline=median(valid.filter(x=>x.h>=3&&midHour(x)>=9&&midHour(x)<17).map(x=>x.kw));
+  if(baseline==null&&valid.length){const s=valid.map(x=>x.kw).sort((a,b)=>a-b);baseline=s[Math.floor(s.length*.2)]}
+  const longMed=median(valid.filter(x=>x.h>=6).map(x=>x.kw));
+  for(const x of iv){
+    if(x.bad){x.flags.push({bad:true,t:'Angka meter naik tanpa catatan beli token. Interval ini tidak dihitung.'});continue}
+    if(baseline&&x.h>=3&&x.kw<baseline*.5) x.flags.push({bad:true,t:'Di bawah beban dasar. Mungkin MCB dimatikan atau salah catat.'});
+    if(longMed&&x.h>=6&&x.kw>longMed*2) x.flags.push({bad:true,t:'Lebih dari 2× rata-rata interval panjang lainnya. Cek AC atau angka meter.'});
+    if(x.h>14) x.flags.push({t:'Interval lebih dari 14 jam, jadi pembagian siang/malam kurang akurat.'});
+  }
+  const first=list[0],last=list[list.length-1];
+  const lastD=last?parseTs(last.ts):null;
+  const totalKwh=valid.reduce((s,x)=>s+x.used,0), totalCost=valid.reduce((s,x)=>s+x.cost,0), totalH=valid.reduce((s,x)=>s+x.h,0);
+  const avgDaily=totalH?totalKwh/totalH*24:null;
+  // 7 days window
+  let k7=0,h7=0,c7=0;
+  if(lastD){const from=+lastD-7*864e5;
+    for(const x of valid){const o=(Math.min(+x.end,+lastD)-Math.max(+x.start,from))/36e5;if(o>0){k7+=x.kw*o;h7+=o;c7+=x.kw*o*x.rate}}}
+  const daily7=h7?k7/h7*24:avgDaily, daily7Cost=h7?c7/h7*24:null;
+  const curRate=lastD?rateFor(last.ts):settings.tarif;
+  // slots & days
+  const slotT={pagi:0,siang:0,sore:0,malam:0},slotC={pagi:0,siang:0,sore:0,malam:0},days={};
+  const STEP=15*6e4;
+  for(const x of valid){
+    for(let t=+x.start;t<+x.end;t+=STEP){
+      const e=Math.min(t+STEP,+x.end),hh=(e-t)/36e5,kwh=x.kw*hh;
+      const d=new Date(t+(e-t)/2),s=slotOf(d.getHours());
+      slotT[s]+=kwh;slotC[s]+=kwh*x.rate;
+      const dk=dayKey(new Date(+d-5*36e5));
+      (days[dk]||(days[dk]={pagi:0,siang:0,sore:0,malam:0,cov:0}))[s]+=kwh;days[dk].cov+=hh;
+    }
+  }
+  // tags
+  const tagStats=[];
+  for(const t of TAGS){
+    let xs=valid.filter(x=>x.tags.includes(t.k)); if(t.k==='ac') xs=xs.filter(x=>x.h<=4);
+    if(!xs.length) continue;
+    const k=xs.reduce((s,x)=>s+x.used,0),hh=xs.reduce((s,x)=>s+x.h,0);
+    tagStats.push({k:t.k,label:t.label+(t.k==='ac'?' (aktif)':''),kw:k/hh,n:xs.length,h:hh});
+  }
+  const acS=tagStats.find(t=>t.k==='ac');
+  return {list,iv,valid,baseline,totalKwh,totalCost,totalH,avgDaily,daily7,daily7Cost,curRate,slotT,slotC,days,tagStats,acKw:acS?acS.kw:null,
+    first,last,lastD,token:last?last.kwh:null,
+    spanDays:first&&last?(parseTs(last.ts)-parseTs(first.ts))/864e5:0,
+    flagged:iv.filter(x=>x.flags.some(f=>f.bad)).length, longCount:iv.filter(x=>x.h>14).length,
+    hasTopupRate:topups.length>0};
+}
+
+/* ---------- render ---------- */
+function render(){
+  const c=compute();
+  renderMeter(c);renderSummary(c);renderPola(c);renderHist(c);
+  if(document.activeElement!==$('setTarif')) $('setTarif').value=settings.tarif;
+}
+
+function renderMeter(c){
+  if(!c.last){$('tokenNum').textContent='---';$('tokenSub').textContent='Belum ada catatan. Mulai dengan Catat meter.';$('lastRead').textContent='';$('warn').hidden=true;return}
+  $('tokenNum').textContent=nf(c.token,2);
+  if(c.daily7&&c.daily7>0){
+    const days=c.token/c.daily7,out=new Date(+c.lastD+days*864e5);
+    $('tokenSub').textContent=`Cukup ±${nf(days,0)} hari lagi, habis sekitar ${out.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'short'})}`;
+  }else $('tokenSub').textContent='Catat lagi untuk menghitung perkiraan habis.';
+  const ago=(Date.now()-c.lastD)/36e5;
+  $('lastRead').textContent=`Catatan terakhir ${fmtDT(c.lastD)}, ${ago<1?'kurang dari 1 jam':nf(ago,0)+' jam'} yang lalu`;
+  const w=$('warn');
+  if(ago>14){w.hidden=false;w.textContent=`Sudah ${nf(ago,0)} jam sejak catatan terakhir. Catat sekarang supaya pemakaian siang dan malam bisa dipisahkan.`}
+  else w.hidden=true;
+}
+
+function renderSummary(c){
+  if(c.valid.length<1){$('stats').innerHTML='';$('slots').innerHTML='<p class="lead">Catat minimal dua angka meter untuk mulai melihat pemakaian.</p>';$('insights').innerHTML='';return}
+  const proj=c.daily7Cost?c.daily7Cost*30:c.daily7*c.curRate*30;
+  $('stats').innerHTML=`
+    <div class="stat"><div class="k">Rata-rata 7 hari terakhir</div><div class="v">${nf(c.daily7,1)} kWh/hari</div><div class="s">${rp(c.daily7Cost||c.daily7*c.curRate)} per hari</div></div>
+    <div class="stat"><div class="k">Perkiraan 30 hari</div><div class="v">${rp(proj)}</div><div class="s">${nf(c.daily7*30,0)} kWh</div></div>
+    <div class="stat"><div class="k">Seluruh periode</div><div class="v">${nf(c.totalKwh,1)} kWh</div><div class="s">${rp(c.totalCost)} dalam ${nf(c.spanDays,1)} hari</div></div>
+    <div class="stat"><div class="k">Tarif dipakai</div><div class="v">${rp(c.curRate)}</div><div class="s">${c.hasTopupRate?'dari pembelian token terakhir':'tarif default, per kWh'}</div></div>`;
+  const tot=SLOTS.reduce((s,x)=>s+c.slotT[x.k],0)||1;
+  $('slots').innerHTML=`<div class="slotbar" role="img" aria-label="Pembagian pemakaian per waktu">${SLOTS.map(s=>`<span style="width:${c.slotT[s.k]/tot*100}%;background:${s.c}"></span>`).join('')}</div>
+    <div class="slotrows">${SLOTS.map(s=>`<div><span class="sw" style="background:${s.c}"></span>${s.label} <span class="dim">${s.range}</span></div><div></div><div class="num">${nf(c.slotT[s.k],1)} kWh</div><div class="num"><b>${nf(c.slotT[s.k]/tot*100,0)}%</b></div>`).join('')}</div>`;
+  const li=[];
+  const nightPct=(c.slotT.sore+c.slotT.malam)/tot*100;
+  li.push(`${nf(nightPct,0)}% pemakaian terjadi antara 17:00 dan 05:00. Penghematan paling terasa kalau dimulai dari jam-jam ini.`);
+  if(c.baseline) li.push(`Beban dasar saat rumah sepi sekitar ${nf(c.baseline*1000,0)} W (kulkas, modem, CCTV, dan standby), setara ${rp(c.baseline*24*c.curRate)} per hari atau ${rp(c.baseline*24*30*c.curRate)} per bulan.`);
+  if(c.acKw){const extra=Math.max(0,c.acKw-(c.baseline||0));
+    li.push(`Saat AC aktif, beban rumah sekitar ${nf(c.acKw,2)} kW atau ${rp(c.acKw*c.curRate)} per jam. Tambahan dari AC kira-kira ${nf(extra,2)} kW, jadi 8 jam AC semalam ≈ ${rp(extra*8*c.curRate)}.`)}
+  else li.push('Beri label AC nyala saat mencatat supaya biaya AC per jam bisa dihitung.');
+  if(c.flagged) li.push(`${c.flagged} interval ditandai tidak wajar. Cek di tab Riwayat.`);
+  if(c.longCount) li.push(`${c.longCount} interval lebih dari 14 jam. Catat di jam tetap (misalnya 07:00, 17:00, 22:00) agar pola lebih jelas.`);
+  $('insights').innerHTML=li.map(x=>`<li>${x}</li>`).join('');
+}
+
+function renderPola(c){
+  const keys=Object.keys(c.days).sort();
+  $('legend').innerHTML=SLOTS.map(s=>`<span><span class="sw" style="background:${s.c}"></span>${s.label} ${s.range}</span>`).join('');
+  if(!keys.length){$('chart').innerHTML='<p class="lead" style="padding:8px">Belum ada data.</p>';$('tagtable').innerHTML='';return}
+  const tots=keys.map(k=>SLOTS.reduce((s,x)=>s+c.days[k][x.k],0));
+  const max=Math.max(...tots,1),top=Math.ceil(max/2)*2,step=top<=6?1:2;
+  const padL=30,padB=24,padT=10,H=220,bw=30,W=padL+keys.length*bw+8;
+  const y=v=>padT+(H-padT-padB)*(1-v/top);
+  let g='';
+  for(let v=0;v<=top;v+=step){g+=`<line x1="${padL}" x2="${W-4}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${padL-6}" y="${y(v)+3}" text-anchor="end">${v}</text>`}
+  keys.forEach((k,i)=>{
+    const d=c.days[k],x=padL+i*bw+5,w=bw-10,full=d.cov>=20;let acc=0;
+    const title=`${new Date(k+'T12:00').toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short'})}: ${nf(tots[i],2)} kWh (${rp(tots[i]*c.curRate)})${full?'':', data belum penuh'}`;
+    let bars='';
+    for(const s of SLOTS){const v=d[s.k];if(v<=0)continue;const y1=y(acc+v),y0=y(acc);bars+=`<rect x="${x}" y="${y1}" width="${w}" height="${Math.max(0,y0-y1)}" fill="${s.c}"/>`;acc+=v}
+    g+=`<g opacity="${full?1:.4}"><title>${esc(title)}</title>${bars}</g><text x="${x+w/2}" y="${H-8}" text-anchor="middle">${+k.slice(8)}</text>`;
+  });
+  $('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:${W}px;display:block" role="img" aria-label="Grafik pemakaian harian">${g}<text x="4" y="${padT+4}">kWh</text></svg>`;
+  const rows=c.tagStats.slice();
+  if(c.baseline) rows.push({label:'Beban dasar (siang, dihitung)',kw:c.baseline,n:null,h:null});
+  $('tagtable').innerHTML=rows.length?`<table><thead><tr><th>Kondisi</th><th class="num">Beban</th><th class="num">Biaya/jam</th><th class="num">Data</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.label)}</td><td class="num">${nf(r.kw,2)} kW</td><td class="num">${rp(r.kw*c.curRate)}</td><td class="num dim">${r.n?r.n+'× / '+nf(r.h,0)+' jam':'—'}</td></tr>`).join('')}</tbody></table>`:'<p class="lead" style="padding:10px 12px;margin:0">Belum ada catatan berlabel.</p>';
+}
+
+function renderHist(c){
+  const items=[];
+  for(const x of c.iv){
+    const topup=x.cur.type==='topup';
+    const sameDay=dayKey(x.start)===dayKey(x.end);
+    const range=`${fmtDT(x.start)} – ${sameDay?fmtHM(x.end):fmtDT(x.end)}`;
+    const tags=[...x.tags.map(t=>TAGLABEL[t]+(t==='ac'&&x.cur.suhu?' '+x.cur.suhu+'°C':''))];
+    items.push(`<li class="${topup?'topup':''}">
+      <div class="hrow"><div class="htime">${range} <span class="dim">(${dur(x.h)})</span></div><div class="hval">${x.bad?'—':rp(x.cost)}</div></div>
+      <div class="hmeta">${x.bad?'':`${nf(x.used,2)} kWh, rata-rata ${nf(x.kw,2)} kW`}${topup?`${x.bad?'':'. '}Beli token ${x.cur.rp?rp(x.cur.rp)+', ':''}+${nf(x.cur.added||0,2)} kWh`:''}</div>
+      ${tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}
+      ${x.cur.note?`<div class="hmeta">${esc(x.cur.note)}</div>`:''}
+      ${x.flags.map(f=>`<div class="flag ${f.bad?'bad':''}">${esc(f.t)}</div>`).join('')}
+      <div class="hbtns"><button class="btn small" data-edit="${esc(x.cur.id)}">Ubah</button><button class="btn small danger" data-del="${esc(x.cur.id)}">Hapus</button></div>
+    </li>`);
+  }
+  if(c.first) items.push(`<li><div class="hrow"><div class="htime">${fmtDT(parseTs(c.first.ts))}</div><div class="hval">${nf(c.first.kwh,2)} kWh</div></div><div class="hmeta">Catatan awal</div><div class="hbtns"><button class="btn small" data-edit="${esc(c.first.id)}">Ubah</button><button class="btn small danger" data-del="${esc(c.first.id)}">Hapus</button></div></li>`);
+  $('hist').innerHTML=items.length?items.slice(0,-1).reverse().concat(items.slice(-1)).join(''):'<li class="dim">Belum ada catatan.</li>';
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));
+  document.querySelectorAll('.pane').forEach(p=>p.hidden=p.id!=='pane-'+b.dataset.tab);
+}));
+
+/* ---------- dialog ---------- */
+let mode='read',editId=null,selTags=new Set();
+$('fTags').innerHTML=TAGS.map(t=>`<button type="button" class="chip" data-tag="${t.k}" aria-pressed="false">${t.label}</button>`).join('');
+$('fTags').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;const k=b.dataset.tag;
+  if(selTags.has(k))selTags.delete(k);else{selTags.add(k);if(k==='ac')selTags.delete('noac');if(k==='noac')selTags.delete('ac')}
+  syncChips()});
+function syncChips(){$('fTags').querySelectorAll('.chip').forEach(b=>b.setAttribute('aria-pressed',selTags.has(b.dataset.tag)?'true':'false'));$('suhuWrap').hidden=!selTags.has('ac')}
+function setMode(m){mode=m;$('topupFields').hidden=m!=='topup';$('readFields').hidden=m==='topup';
+  $('dlgTitle').textContent=(editId?'Ubah ':'')+(m==='topup'?'catatan beli token':'catatan meter');
+  $('fKwhLabel').textContent=m==='topup'?'Angka di meter setelah token masuk (kWh)':'Angka di meter (kWh)'}
+function openDlg(m,entry){
+  editId=entry?entry.id:null;
+  $('fTs').value=entry?entry.ts:fmtTs(new Date());
+  $('fKwh').value=entry?String(entry.kwh).replace('.',','):'';
+  $('fAdded').value=entry&&entry.added?String(entry.added).replace('.',','):'';
+  $('fRp').value=entry&&entry.rp?entry.rp:'';
+  $('fNote').value=entry?entry.note||'':'';
+  $('fSuhu').value=entry&&entry.suhu?entry.suhu:'';
+  selTags=new Set(entry?entry.tags||[]:[]);syncChips();
+  $('fMsg').textContent='';setMode(m);
+  $('dlg').showModal();setTimeout(()=>$('fKwh').focus(),50);
+}
+$('btnRead').onclick=()=>openDlg('read');
+$('btnTopup').onclick=()=>openDlg('topup');
+$('fCancel').onclick=()=>$('dlg').close();
+$('dlg').addEventListener('click',e=>{if(e.target===$('dlg'))$('dlg').close()});
+$('fMsg').addEventListener('click',e=>{if(e.target.dataset.switch){setMode('topup');$('fMsg').textContent='';$('fAdded').focus()}});
+$('fSave').onclick=async()=>{
+  const ts=$('fTs').value, kwh=num($('fKwh').value);
+  if(!ts||isNaN(parseTs(ts))){$('fMsg').textContent='Isi waktu pencatatan.';return}
+  if(!(kwh>=0)){$('fMsg').textContent='Isi angka meter, contoh 164,54.';return}
+  const prev=entries.filter(e=>e.id!==editId&&e.ts<ts).sort((a,b)=>a.ts<b.ts?1:-1)[0];
+  let obj;
+  if(mode==='read'){
+    if(prev&&kwh>prev.kwh+0.005){$('fMsg').innerHTML=`Angka ini lebih besar dari catatan sebelumnya (${nf(prev.kwh,2)}). Kalau kamu baru isi token, <button class="btn small" data-switch="1">Catat sebagai beli token</button>`;return}
+    obj={type:'reading',ts,kwh,tags:[...selTags],note:$('fNote').value.trim()};
+    if(selTags.has('ac')&&$('fSuhu').value) obj.suhu=+$('fSuhu').value;
+  }else{
+    const added=num($('fAdded').value),paid=rpNum($('fRp').value);
+    if(!(added>0)){$('fMsg').textContent='Isi jumlah kWh yang masuk dari token.';return}
+    obj={type:'topup',ts,kwh,added,note:$('fNote').value.trim()};
+    if(paid>0) obj.rp=paid;
+  }
+  obj.id=idFor(obj.type,ts);
+  const dup=entries.find(e=>e.id===obj.id&&e.id!==editId);
+  if(dup){$('fMsg').textContent='Sudah ada catatan di menit yang sama. Ubah waktunya sedikit.';return}
+  $('fSave').disabled=true;
+  try{
+    await store.put(obj);
+    if(editId&&editId!==obj.id) await store.del(editId);
+    $('dlg').close();
+  }catch(e){$('fMsg').textContent='Gagal menyimpan. Periksa koneksi lalu coba lagi.'}
+  $('fSave').disabled=false;
+};
+
+/* ---------- history actions ---------- */
+$('hist').addEventListener('click',async e=>{
+  const ed=e.target.closest('[data-edit]'),de=e.target.closest('[data-del]');
+  if(ed){const en=entries.find(x=>x.id===ed.dataset.edit);if(en)openDlg(en.type==='topup'?'topup':'read',en)}
+  if(de){
+    if(de.dataset.armed!=='1'){de.dataset.armed='1';de.textContent='Yakin hapus?';setTimeout(()=>{if(de.isConnected){de.dataset.armed='';de.textContent='Hapus'}},3000);return}
+    try{await store.del(de.dataset.del)}catch(err){de.textContent='Gagal'}
+  }
+});
+
+/* ---------- settings ---------- */
+$('saveTarif').onclick=async()=>{const v=num($('setTarif').value);
+  if(!(v>0)){$('tarifMsg').textContent='Isi tarif yang valid.';return}
+  try{await store.saveSettings(Object.assign({},settings,{tarif:v}));$('tarifMsg').textContent='Tarif disimpan.'}catch(e){$('tarifMsg').textContent='Gagal menyimpan tarif.'}};
+
+/* ---------- import ---------- */
+$('doImport').onclick=async()=>{
+  const lines=$('importText').value.split(/\r?\n/);const out=[];
+  for(const line of lines){
+    let c=line.split('\t'); if(c.length<3) c=line.split(/;|,(?=\s*\d{1,2}[:.]\d{2})|\s{2,}/);
+    const i=c.findIndex(x=>/^\s*\d{4}-\d{2}-\d{2}\s*$/.test(x)); if(i<0) continue;
+    const date=c[i].trim(), tm=(c[i+1]||'').trim().replace('.',':'); const tmm=/^(\d{1,2}):(\d{2})/.exec(tm); if(!tmm) continue;
+    const kIdx=/^\s*\d{4}-\d{2}-\d{2}[ T]\d{1,2}:\d{2}/.test(c[i+2]||'')?i+3:i+2;
+    const kwh=num(c[kIdx]); if(!(kwh>=0)) continue;
+    let note='';const lastCol=(c[c.length-1]||'').trim();
+    if(c.length-1>kIdx&&lastCol&&isNaN(num(lastCol))&&!/^-?[\d.,:]+$/.test(lastCol)) note=lastCol;
+    const ts=date+'T'+pad(tmm[1])+':'+tmm[2];
+    out.push({id:idFor('reading',ts),type:'reading',ts,kwh,tags:inferTags(note),note});
+  }
+  if(!out.length){$('importMsg').textContent='Tidak ada baris yang bisa dibaca. Pastikan ada kolom tanggal (2026-09-22), jam (7:10), dan kWh.';return}
+  const have=new Set(entries.map(e=>e.id));const fresh=out.filter(o=>!have.has(o.id));
+  $('importMsg').textContent=`Menambahkan ${fresh.length} baris…`;
+  let ok=0;for(const o of fresh){try{await store.put(o);ok++}catch(e){}}
+  $('importMsg').textContent=`${ok} baris ditambahkan, ${out.length-fresh.length} dilewati karena sudah ada.`;
+  if(ok) $('importText').value='';
+};
+
+/* ---------- export ---------- */
+function csv(){
+  const c=compute();const rows=[['tanggal','waktu','jenis','kwh_meter','kwh_masuk','nominal_rp','pemakaian_kwh','durasi_jam','beban_kw','biaya_rp','kondisi','suhu_ac','catatan']];
+  const byEnd=new Map(c.iv.map(x=>[x.cur.id,x]));
+  for(const e of c.list){const x=byEnd.get(e.id);const d=parseTs(e.ts);
+    rows.push([dayKey(d),fmtHM(d),e.type==='topup'?'beli token':'catat',e.kwh,e.added||'',e.rp||'',x&&!x.bad?x.used.toFixed(2):'',x?x.h.toFixed(2):'',x&&!x.bad?x.kw.toFixed(3):'',x&&!x.bad?Math.round(x.cost):'',(e.tags||[]).map(t=>TAGLABEL[t]).join(' | '),e.suhu||'',e.note||''])}
+  return rows.map(r=>r.map(v=>{v=String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\n');
+}
+$('dlCsv').onclick=async()=>{if(!dl)return;try{await dl.save({filename:'listrik-rumah-'+dayKey(new Date())+'.csv',data:csv()});$('exportMsg').textContent='File disimpan.'}catch(e){$('exportMsg').textContent=e&&e.code==='declined'?'Unduhan dibatalkan.':'Unduhan tidak tersedia. Pakai Salin CSV.'}};
+$('copyCsv').onclick=async()=>{try{await navigator.clipboard.writeText(csv());$('exportMsg').textContent='CSV disalin. Tempel di Excel atau Sheets.'}catch(e){$('exportMsg').textContent='Browser tidak mengizinkan menyalin otomatis.'}};
+
+setInterval(()=>{if(store)renderMeter(compute())},60000);
+initStore();
+})();
+</script>
+</body>
+</html>
