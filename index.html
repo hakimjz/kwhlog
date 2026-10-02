@@ -91,7 +91,21 @@
         <div class="msg" id="exportMsg"></div>
       </div>
 
-      <h2>Penyimpanan</h2>
+      <h2>Akun dan sinkron</h2>
+      <div class="panel">
+        <div id="authOut">
+          <label class="field"><span>Email</span>
+            <input type="email" id="authEmail" autocomplete="email" inputmode="email" style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px">
+            <small>Kami kirim link masuk ke email ini. Tidak perlu password.</small>
+          </label>
+          <button class="btn small" id="authSend">Kirim link masuk</button>
+        </div>
+        <div id="authIn" hidden>
+          <p class="lead" id="authWho" style="margin-top:0"></p>
+          <button class="btn small" id="authOutBtn">Keluar</button>
+        </div>
+        <div class="msg" id="authMsg"></div>
+      </div>
       <p class="lead" id="storageInfo"></p>
     </section>
   </main>

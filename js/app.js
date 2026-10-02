@@ -205,7 +205,7 @@ $('doImport').onclick = async () => {
   if (!out.length) { $('importMsg').textContent = 'Tidak ada baris yang bisa dibaca. Pastikan ada kolom tanggal (2026-09-22), jam (7:10), dan kWh.'; return; }
   const have = new Set(store.getEntries().map(e => e.id)); const fresh = out.filter(o => !have.has(o.id));
   $('importMsg').textContent = `Menambahkan ${fresh.length} baris…`;
-  let ok = 0; for (const o of fresh) { try { await store.put(o); ok++; } catch (e) { /* lewati */ } }
+  let ok = 0; try { await store.putMany(fresh); ok = fresh.length; } catch (e) { /* gagal semua: ok tetap 0 */ }
   $('importMsg').textContent = `${ok} baris ditambahkan, ${out.length - fresh.length} dilewati karena sudah ada.`;
   if (ok) $('importText').value = '';
 };
@@ -233,8 +233,34 @@ $('copyCsv').onclick = async () => {
 };
 
 /* ---------- start ---------- */
-store.subscribe(render);
+const STATUS = {
+  nocfg: ['Hanya di perangkat ini', true, 'Supabase belum diisi di js/config.js, jadi data disimpan di browser perangkat ini saja.'],
+  offline: ['Offline, memakai cache', true, 'Layanan sinkron tidak terjangkau. Data ditampilkan dari cache di perangkat ini.'],
+  out: ['Belum masuk', true, 'Belum masuk, jadi catatan baru disimpan di perangkat ini dan akan dikirim ke cloud setelah kamu masuk.'],
+  sync: ['Menyinkronkan…', false, 'Sedang menyinkronkan dengan cloud.'],
+  ok: ['Tersinkron', false, 'Data tersimpan di cloud dan tersinkron antara HP dan laptop. Cache di perangkat ini membuat halaman langsung tampil.'],
+  error: ['Sinkron gagal', true, 'Tidak bisa menyambung ke cloud. Data ditampilkan dari cache; coba muat ulang halaman.']
+};
+function renderStatus() {
+  const [label, off, info] = STATUS[store.getStatus()];
+  $('sync').textContent = label; $('sync').classList.toggle('off', off);
+  $('storageInfo').textContent = info;
+  const u = store.getUser();
+  $('authOut').hidden = !!u; $('authIn').hidden = !u;
+  if (u) $('authWho').textContent = 'Masuk sebagai ' + u.email;
+  $('authSend').disabled = store.getStatus() === 'nocfg' || store.getStatus() === 'offline';
+}
+$('authSend').onclick = async () => {
+  const email = $('authEmail').value.trim();
+  if (!email) { $('authMsg').textContent = 'Isi email.'; return; }
+  $('authSend').disabled = true; $('authMsg').textContent = 'Mengirim…';
+  try { await store.signIn(email); $('authMsg').textContent = 'Link masuk dikirim. Buka email di perangkat ini lalu ketuk linknya.'; }
+  catch (e) { $('authMsg').textContent = 'Gagal mengirim link: ' + (e && e.message ? e.message : 'coba lagi'); }
+  renderStatus();
+};
+$('authOutBtn').onclick = async () => { await store.signOut(); $('authMsg').textContent = ''; };
+
+store.subscribe(() => { render(); renderStatus(); });
+renderStatus();
 setInterval(() => renderMeter(calc()), 60000);
-$('sync').textContent = 'Hanya di perangkat ini'; $('sync').classList.add('off');
-$('storageInfo').textContent = 'Data disimpan di browser perangkat ini saja (localStorage), belum tersinkron antara HP dan laptop.';
 store.init();
