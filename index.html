@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>kWh Log</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#EEF0EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12161C" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="kWh Log">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -120,6 +129,12 @@
           <button class="btn small" id="copyCsv">Salin CSV</button>
         </div>
         <div class="msg" id="exportMsg"></div>
+      </div>
+
+      <h2>Pasang di layar utama</h2>
+      <div class="panel">
+        <button class="btn small" id="btnInstall" hidden>Pasang aplikasi</button>
+        <p class="lead" id="installInfo" style="margin:0"></p>
       </div>
 
       <h2>Penyimpanan</h2>

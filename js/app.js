@@ -353,3 +353,17 @@ store.subscribe(() => { render(); renderStatus(); });
 renderStatus();
 setInterval(() => renderMeter(calc()), 60000);
 store.init();
+
+/* ---------- PWA: service worker + tombol pasang ---------- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { /* tanpa SW aplikasi tetap jalan online */ }));
+}
+let installEvt = null;
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('btnInstall').hidden = false; $('installInfo').textContent = 'Pasang supaya terbuka seperti aplikasi, layar penuh, dan tetap bisa dibuka tanpa sinyal.'; });
+window.addEventListener('appinstalled', () => { installEvt = null; $('btnInstall').hidden = true; $('installInfo').textContent = 'Sudah terpasang.'; });
+$('btnInstall').onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $('btnInstall').hidden = true; };
+$('installInfo').textContent = standalone ? 'Sudah dibuka sebagai aplikasi.'
+  : isIOS ? 'Di iPhone: ketuk tombol Bagikan di Safari, lalu pilih "Tambah ke Layar Utama".'
+  : 'Di Chrome Android: menu ⋮, lalu "Instal aplikasi" atau "Tambahkan ke layar utama".';
