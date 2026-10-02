@@ -50,6 +50,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="ringkasan" aria-selected="true">Ringkasan</button>
     <button class="tab" role="tab" data-tab="pola" aria-selected="false">Pola</button>
+    <button class="tab" role="tab" data-tab="laporan" aria-selected="false">Laporan</button>
     <button class="tab" role="tab" data-tab="riwayat" aria-selected="false">Riwayat</button>
     <button class="tab" role="tab" data-tab="data" aria-selected="false">Data</button>
   </nav>
@@ -71,6 +72,19 @@
       <h2>Beban per kondisi</h2>
       <p class="lead">Dihitung dari label kondisi di setiap catatan. Beban AC hanya memakai interval 4 jam atau kurang, supaya tidak tercampur jam tanpa AC.</p>
       <div class="tblwrap" id="tagtable"></div>
+    </section>
+
+    <section class="pane" id="pane-laporan" hidden>
+      <div class="chips rpkind" id="rpKind" role="group" aria-label="Periode">
+        <button type="button" class="chip" data-kind="week" aria-pressed="true">Minggu</button>
+        <button type="button" class="chip" data-kind="month" aria-pressed="false">Bulan</button>
+      </div>
+      <div class="rpnav">
+        <button class="btn small" id="rpPrev" aria-label="Periode sebelumnya">‹ Sebelumnya</button>
+        <div class="rptitle" id="rpTitle"></div>
+        <button class="btn small" id="rpNext" aria-label="Periode berikutnya">Berikutnya ›</button>
+      </div>
+      <div id="rpBody"></div>
     </section>
 
     <section class="pane" id="pane-riwayat" hidden>

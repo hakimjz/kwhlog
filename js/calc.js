@@ -70,6 +70,19 @@ export function inferTags(note) {
   return t;
 }
 
+/* ---------- potongan 15 menit ---------- */
+// Satu interval dibagi per 15 menit (dihitung dari awal interval, beban dianggap rata). Tiap potongan
+// dimiliki oleh titik tengahnya: dipakai untuk slot waktu, hari listrik, dan periode laporan,
+// jadi semua penjumlahan saling cocok. fn(titikTengah: Date, jam, kwh, slot).
+const STEP = 15 * 6e4;
+export function forEachChunk(x, fn) {
+  for (let t = +x.start; t < +x.end; t += STEP) {
+    const e = Math.min(t + STEP, +x.end), hh = (e - t) / 36e5;
+    const d = new Date(t + (e - t) / 2);
+    fn(d, hh, x.kw * hh, slotOf(d.getHours()));
+  }
+}
+
 /* ---------- hitungan utama ---------- */
 export function compute(entries, settings = {}) {
   const tarif = settings.tarif || DEFAULT_TARIF;
@@ -113,15 +126,12 @@ export function compute(entries, settings = {}) {
   const curRate = lastD ? rateFor(last.ts) : tarif;
   // slot waktu & hari listrik (batas 05:00), potongan 15 menit
   const slotT = { pagi: 0, siang: 0, sore: 0, malam: 0 }, slotC = { pagi: 0, siang: 0, sore: 0, malam: 0 }, days = {};
-  const STEP = 15 * 6e4;
   for (const x of valid) {
-    for (let t = +x.start; t < +x.end; t += STEP) {
-      const e = Math.min(t + STEP, +x.end), hh = (e - t) / 36e5, kwh = x.kw * hh;
-      const d = new Date(t + (e - t) / 2), s = slotOf(d.getHours());
+    forEachChunk(x, (d, hh, kwh, s) => {
       slotT[s] += kwh; slotC[s] += kwh * x.rate;
       const dk = dayKey(new Date(+d - 5 * 36e5));
       (days[dk] || (days[dk] = { pagi: 0, siang: 0, sore: 0, malam: 0, cov: 0 }))[s] += kwh; days[dk].cov += hh;
-    }
+    });
   }
   // beban per tag
   const tagStats = [];
@@ -138,5 +148,83 @@ export function compute(entries, settings = {}) {
     spanDays: first && last ? (parseTs(last.ts) - parseTs(first.ts)) / 864e5 : 0,
     flagged: iv.filter(x => x.flags.some(f => f.bad)).length, longCount: iv.filter(x => x.h > 14).length,
     hasTopupRate: topups.length > 0
+  };
+}
+
+/* ---------- laporan periode (minggu / bulan) ---------- */
+// Batas periode jatuh pada jam 05:00 (batas hari listrik), bukan tengah malam.
+// Minggu mulai Senin 05:00; bulan mulai tanggal 1 05:00. Interval yang melewati batas dibagi per potongan
+// 15 menit (forEachChunk), tiap potongan masuk ke periode yang memuat titik tengahnya.
+export const FULL_RATIO = 0.95; // periode yang sudah lewat dianggap penuh bila >= 95% jamnya tercakup data
+
+// Awal periode yang memuat waktu d.
+export function periodStart(kind, d) {
+  const x = new Date(+d - 5 * 36e5); // sebelum 05:00 masih termasuk hari listrik sebelumnya
+  if (kind === 'month') return new Date(x.getFullYear(), x.getMonth(), 1, 5, 0);
+  const dow = (x.getDay() + 6) % 7; // Senin = 0
+  return new Date(x.getFullYear(), x.getMonth(), x.getDate() - dow, 5, 0);
+}
+// Awal periode n langkah dari `start` (n negatif = sebelumnya).
+export function shiftPeriod(kind, start, n) {
+  if (kind === 'month') return new Date(start.getFullYear(), start.getMonth() + n, 1, 5, 0);
+  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7 * n, 5, 0);
+}
+// Rentang periode yang punya data: awal periode catatan pertama sampai periode catatan terakhir.
+export function periodSpan(c, kind) {
+  if (!c.first) return null;
+  return { first: periodStart(kind, parseTs(c.first.ts)), last: periodStart(kind, c.lastD) };
+}
+
+// Total satu periode dari hasil compute(). status: kosong | berjalan | parsial | penuh.
+export function aggregatePeriod(c, kind, start) {
+  const end = shiftPeriod(kind, start, 1);
+  const lenH = (end - start) / 36e5;
+  const slotKwh = { pagi: 0, siang: 0, sore: 0, malam: 0 };
+  let kwh = 0, cost = 0, covH = 0;
+  for (const x of c.valid) {
+    if (+x.end <= +start || +x.start >= +end) continue;
+    forEachChunk(x, (d, hh, k, s) => {
+      if (+d < +start || +d >= +end) return;
+      kwh += k; cost += k * x.rate; covH += hh; slotKwh[s] += k;
+    });
+  }
+  const tops = c.list.filter(e => e.type === 'topup' && parseTs(e.ts) >= start && parseTs(e.ts) < end)
+    .map(e => ({ id: e.id, ts: e.ts, kwh: e.kwh, added: e.added || 0, rp: e.rp || 0, rate: e.rp > 0 && e.added > 0 ? e.rp / e.added : null }));
+  const paid = tops.filter(t => t.rate != null);
+  const topups = {
+    list: tops, count: tops.length,
+    added: tops.reduce((s, t) => s + t.added, 0),
+    rp: tops.reduce((s, t) => s + t.rp, 0),
+    avgRate: paid.length ? paid.reduce((s, t) => s + t.rp, 0) / paid.reduce((s, t) => s + t.added, 0) : null
+  };
+  const ended = !!c.lastD && +c.lastD >= +end;
+  const status = covH <= 0 ? 'kosong' : !ended ? 'berjalan' : covH / lenH < FULL_RATIO ? 'parsial' : 'penuh';
+  return {
+    kind, start, end, lenH, covH, coverage: covH / lenH, status,
+    kwh, cost, slotKwh,
+    avgDaily: covH > 0 ? kwh / covH * 24 : null, // total / jam tercakup x 24, bukan dibagi jumlah tanggal
+    avgDailyCost: covH > 0 ? cost / covH * 24 : null,
+    topups
+  };
+}
+
+const pct = (a, b) => (b > 0 && a != null ? (a - b) / b * 100 : null);
+
+// Laporan satu periode + perbandingan dengan periode sebelumnya.
+// Total (kWh dan Rp) hanya dibandingkan kalau KEDUA periode penuh; kalau tidak, hanya rata-rata harian
+// (itu pun hanya bila masing-masing punya data >= 24 jam), karena total periode yang belum penuh tidak setara.
+export function periodReport(c, kind, start) {
+  const cur = aggregatePeriod(c, kind, start);
+  const prev = aggregatePeriod(c, kind, shiftPeriod(kind, start, -1));
+  const comparable = cur.status === 'penuh' && prev.status === 'penuh';
+  const dailyOk = cur.covH >= 24 && prev.covH >= 24;
+  return {
+    ...cur, prev,
+    compare: {
+      comparable,
+      kwhPct: comparable ? pct(cur.kwh, prev.kwh) : null,
+      rpPct: comparable ? pct(cur.cost, prev.cost) : null,
+      dailyPct: dailyOk ? pct(cur.avgDaily, prev.avgDaily) : null
+    }
   };
 }

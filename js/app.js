@@ -1,5 +1,5 @@
 // Render + event. Hitungan ada di calc.js, penyimpanan di store.js.
-import { TAGS, TAGLABEL, SLOTS, compute, parseTs, fmtTs, dayKey, num, rpNum, idFor, inferTags, pad } from './calc.js';
+import { TAGS, TAGLABEL, SLOTS, compute, parseTs, fmtTs, dayKey, num, rpNum, idFor, inferTags, pad, shiftPeriod, periodSpan, periodReport } from './calc.js';
 import * as store from './store.js';
 
 const $ = id => document.getElementById(id);
@@ -10,6 +10,7 @@ const rp = n => 'Rp' + nf(Math.round(n));
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function fmtDT(d) { return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
 function fmtHM(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+const pend = id => store.isPending(id) ? ' <span class="pend" title="Belum terkirim ke cloud">● belum terkirim</span>' : '';
 function dur(h) { const m = Math.round(h * 60); return Math.floor(m / 60) + ':' + pad(m % 60); }
 
 /* ---------- render ---------- */
@@ -17,7 +18,7 @@ function calc() { return compute(store.getEntries(), store.getSettings()); }
 
 function render() {
   const c = calc();
-  renderMeter(c); renderSummary(c); renderPola(c); renderHist(c);
+  renderMeter(c); renderSummary(c); renderPola(c); renderReport(c); renderHist(c);
   if (document.activeElement !== $('setTarif')) $('setTarif').value = store.getSettings().tarif;
 }
 
@@ -85,6 +86,81 @@ function renderPola(c) {
   $('tagtable').innerHTML = rows.length ? `<table><thead><tr><th>Kondisi</th><th class="num">Beban</th><th class="num">Biaya/jam</th><th class="num">Data</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r.label)}</td><td class="num">${nf(r.kw, 2)} kW</td><td class="num">${rp(r.kw * c.curRate)}</td><td class="num dim">${r.n ? r.n + '× / ' + nf(r.h, 0) + ' jam' : '—'}</td></tr>`).join('')}</tbody></table>` : '<p class="lead" style="padding:10px 12px;margin:0">Belum ada catatan berlabel.</p>';
 }
 
+/* ---------- laporan ---------- */
+let rpKind = 'week', rpStart = null; // rpStart null = periode terakhir yang punya data
+const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const dShort = d => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+const sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '') + nf(Math.abs(v), 1) + '%';
+const STATUS_NOTE = {
+  berjalan: 'Periode ini masih berjalan atau datanya belum sampai ke akhir periode.',
+  parsial: 'Data belum mencakup seluruh periode ini.'
+};
+
+function periodLabel(kind, start) {
+  if (kind === 'month') return MONTHS[start.getMonth()] + ' ' + start.getFullYear();
+  const last = new Date(+shiftPeriod('week', start, 1) - 6 * 36e5); // hari listrik terakhir (Minggu)
+  return dShort(start) + ' – ' + dShort(last) + ' ' + last.getFullYear();
+}
+
+function renderReport(c) {
+  const span = periodSpan(c, rpKind);
+  $('rpKind').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', b.dataset.kind === rpKind ? 'true' : 'false'));
+  if (!span) {
+    $('rpTitle').textContent = '';
+    $('rpPrev').disabled = $('rpNext').disabled = true;
+    $('rpBody').innerHTML = '<p class="lead">Catat minimal dua angka meter untuk melihat laporan.</p>';
+    return;
+  }
+  const start = rpStart && +rpStart >= +span.first && +rpStart <= +span.last ? rpStart : span.last;
+  rpStart = +start === +span.last ? null : start;
+  $('rpTitle').textContent = periodLabel(rpKind, start);
+  $('rpPrev').disabled = +start <= +span.first;
+  $('rpNext').disabled = +start >= +span.last;
+
+  const r = periodReport(c, rpKind, start);
+  const unit = rpKind === 'month' ? 'bulan' : 'minggu';
+  if (r.status === 'kosong') { $('rpBody').innerHTML = '<div class="rpnote">Belum ada data di periode ini.</div>'; return; }
+  let html = '';
+  if (r.status !== 'penuh') html += `<div class="rpnote"><b>Data belum penuh.</b> ${STATUS_NOTE[r.status]} Tercakup ${nf(r.covH / 24, 1)} dari ${nf(r.lenH / 24, 0)} hari, jadi total di bawah bukan angka satu ${unit} penuh.</div>`;
+
+  html += `<div class="stats">
+    <div class="stat"><div class="k">Total pemakaian</div><div class="v">${nf(r.kwh, 1)} kWh</div><div class="s">${rp(r.cost)}</div></div>
+    <div class="stat"><div class="k">Rata-rata harian</div><div class="v">${r.avgDaily == null ? '—' : nf(r.avgDaily, 1) + ' kWh'}</div><div class="s">${r.avgDailyCost == null ? '' : rp(r.avgDailyCost) + ' per hari'}</div></div>
+  </div>`;
+
+  const tot = SLOTS.reduce((s, x) => s + r.slotKwh[x.k], 0) || 1;
+  html += `<h2>Kapan listrik terpakai</h2>
+    <div class="slotbar" role="img" aria-label="Pembagian pemakaian per waktu">${SLOTS.map(s => `<span style="width:${r.slotKwh[s.k] / tot * 100}%;background:${s.c}"></span>`).join('')}</div>
+    <div class="slotrows">${SLOTS.map(s => `<div><span class="sw" style="background:${s.c}"></span>${s.label} <span class="dim">${s.range}</span></div><div></div><div class="num">${nf(r.slotKwh[s.k], 1)} kWh</div><div class="num"><b>${nf(r.slotKwh[s.k] / tot * 100, 0)}%</b></div>`).join('')}</div>`;
+
+  const prevLabel = periodLabel(rpKind, r.prev.start), cmp = r.compare;
+  html += `<h2>Dibanding ${unit} sebelumnya</h2>`;
+  if (cmp.comparable) {
+    html += `<div class="cmp"><div>Total kWh</div><div class="delta">${sgn(cmp.kwhPct)}</div>
+      <div>Total rupiah</div><div class="delta">${sgn(cmp.rpPct)}</div>
+      <div>Rata-rata harian</div><div class="delta">${sgn(cmp.dailyPct)}</div></div>
+      <p class="lead">Dibanding ${esc(prevLabel)} (${nf(r.prev.kwh, 1)} kWh, ${rp(r.prev.cost)}). Tarif bisa berbeda di antara dua periode.</p>`;
+  } else if (cmp.dailyPct != null) {
+    html += `<div class="cmp"><div>Rata-rata harian</div><div class="delta">${sgn(cmp.dailyPct)}</div></div>
+      <p class="lead">Total tidak dibandingkan karena ${r.status !== 'penuh' ? 'periode ini' : 'periode sebelumnya (' + esc(prevLabel) + ')'} belum penuh. Rata-rata harian dihitung per jam yang tercakup data (${nf(r.avgDaily, 1)} lawan ${nf(r.prev.avgDaily, 1)} kWh/hari).</p>`;
+  } else {
+    html += `<p class="lead">Belum bisa dibandingkan: ${r.prev.covH < 24 ? 'data ' + unit + ' sebelumnya (' + esc(prevLabel) + ') kurang dari satu hari' : 'data periode ini kurang dari satu hari'}.</p>`;
+  }
+
+  const t = r.topups;
+  html += '<h2>Pembelian token</h2>';
+  if (!t.count) html += '<p class="lead">Tidak ada pembelian token di periode ini.</p>';
+  else {
+    html += `<p class="lead">${t.count} kali beli, +${nf(t.added, 1)} kWh${t.rp ? ', ' + rp(t.rp) : ''}${t.avgRate ? ', rata-rata ' + rp(t.avgRate) + '/kWh' : ''}.</p>
+      <div class="tblwrap"><table><thead><tr><th>Waktu</th><th class="num">kWh masuk</th><th class="num">Nominal</th><th class="num">Per kWh</th></tr></thead><tbody>${t.list.map(x => `<tr><td>${fmtDT(parseTs(x.ts))}</td><td class="num">+${nf(x.added, 2)}</td><td class="num">${x.rp ? rp(x.rp) : '—'}</td><td class="num">${x.rate ? rp(x.rate) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  $('rpBody').innerHTML = html;
+}
+
+$('rpKind').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b || b.dataset.kind === rpKind) return; rpKind = b.dataset.kind; rpStart = null; render(); });
+$('rpPrev').onclick = () => { const span = periodSpan(calc(), rpKind); if (span) { rpStart = shiftPeriod(rpKind, rpStart || span.last, -1); render(); } };
+$('rpNext').onclick = () => { const span = periodSpan(calc(), rpKind); if (span) { rpStart = shiftPeriod(rpKind, rpStart || span.last, 1); render(); } };
+
 function renderHist(c) {
   const items = [];
   for (const x of c.iv) {
@@ -93,7 +169,7 @@ function renderHist(c) {
     const range = `${fmtDT(x.start)} – ${sameDay ? fmtHM(x.end) : fmtDT(x.end)}`;
     const tags = [...x.tags.map(t => TAGLABEL[t] + (t === 'ac' && x.cur.suhu ? ' ' + x.cur.suhu + '°C' : ''))];
     items.push(`<li class="${topup ? 'topup' : ''}">
-      <div class="hrow"><div class="htime">${range} <span class="dim">(${dur(x.h)})</span></div><div class="hval">${x.bad ? '—' : rp(x.cost)}</div></div>
+      <div class="hrow"><div class="htime">${range} <span class="dim">(${dur(x.h)})</span>${pend(x.cur.id)}</div><div class="hval">${x.bad ? '—' : rp(x.cost)}</div></div>
       <div class="hmeta">${x.bad ? '' : `${nf(x.used, 2)} kWh, rata-rata ${nf(x.kw, 2)} kW`}${topup ? `${x.bad ? '' : '. '}Beli token ${x.cur.rp ? rp(x.cur.rp) + ', ' : ''}+${nf(x.cur.added || 0, 2)} kWh` : ''}</div>
       ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
       ${x.cur.note ? `<div class="hmeta">${esc(x.cur.note)}</div>` : ''}
@@ -101,7 +177,7 @@ function renderHist(c) {
       <div class="hbtns"><button class="btn small" data-edit="${esc(x.cur.id)}">Ubah</button><button class="btn small danger" data-del="${esc(x.cur.id)}">Hapus</button></div>
     </li>`);
   }
-  if (c.first) items.push(`<li><div class="hrow"><div class="htime">${fmtDT(parseTs(c.first.ts))}</div><div class="hval">${nf(c.first.kwh, 2)} kWh</div></div><div class="hmeta">Catatan awal</div><div class="hbtns"><button class="btn small" data-edit="${esc(c.first.id)}">Ubah</button><button class="btn small danger" data-del="${esc(c.first.id)}">Hapus</button></div></li>`);
+  if (c.first) items.push(`<li><div class="hrow"><div class="htime">${fmtDT(parseTs(c.first.ts))}${pend(c.first.id)}</div><div class="hval">${nf(c.first.kwh, 2)} kWh</div></div><div class="hmeta">Catatan awal</div><div class="hbtns"><button class="btn small" data-edit="${esc(c.first.id)}">Ubah</button><button class="btn small danger" data-del="${esc(c.first.id)}">Hapus</button></div></li>`);
   $('hist').innerHTML = items.length ? items.slice(0, -1).reverse().concat(items.slice(-1)).join('') : '<li class="dim">Belum ada catatan.</li>';
 }
 
@@ -239,18 +315,22 @@ $('copyCsv').onclick = async () => {
 const STATUS = {
   init: ['Memuat…', false, 'Memuat…'],
   nocfg: ['Hanya di perangkat ini', true, 'Supabase belum diisi di js/config.js, jadi data disimpan di browser perangkat ini saja.'],
-  offline: ['Offline, memakai cache', true, 'Layanan sinkron tidak terjangkau. Data ditampilkan dari cache di perangkat ini.'],
+  offline: ['Offline', true, 'Tidak ada koneksi ke cloud. Data ditampilkan dari cache di perangkat ini; catatan baru masuk antrean dan dikirim sendiri saat online.'],
   out: ['Belum masuk', true, 'Belum masuk, jadi catatan baru disimpan di perangkat ini dan akan dikirim ke cloud setelah kamu masuk.'],
   sync: ['Menyinkronkan…', false, 'Sedang menyinkronkan dengan cloud.'],
   ok: ['Tersinkron', false, 'Data tersimpan di cloud dan tersinkron antara HP dan laptop. Cache di perangkat ini membuat halaman langsung tampil.'],
-  error: ['Sinkron gagal', true, 'Tidak bisa menyambung ke cloud. Data ditampilkan dari cache; coba muat ulang halaman.']
+  error: ['Sinkron gagal', true, 'Pengiriman ke cloud gagal. Data aman di perangkat ini dan akan dicoba lagi otomatis.']
 };
 function renderStatus() {
   const st = store.getStatus(), u = store.getUser();
   const [label, off, info] = STATUS[st];
-  // header: kalau sudah masuk, tampilkan email (plus keadaan sinkron hanya bila bermasalah) dan tombol Keluar
-  $('sync').textContent = u ? u.email + (st === 'ok' ? '' : ' · ' + label) : label;
-  $('sync').classList.toggle('off', u ? st === 'error' : off);
+  // header: email kalau sudah masuk, keadaan sinkron hanya bila bermasalah, dan jumlah yang belum terkirim
+  const n = store.getPending();
+  const parts = [u ? u.email : label];
+  if (u && st !== 'ok') parts.push(label);
+  if (n) parts.push(n + ' belum terkirim');
+  $('sync').textContent = parts.join(' · ');
+  $('sync').classList.toggle('off', u ? (st === 'error' || st === 'offline') : off);
   $('btnLogout').hidden = !u;
   $('storageInfo').textContent = info;
   $('loginCard').hidden = st !== 'out';

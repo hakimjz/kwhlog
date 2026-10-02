@@ -1,11 +1,11 @@
--- Data awal 2-22 Sep 2026 (61 baris catatan meter).
+-- Data awal 2 Sep - 2 Okt 2026 (83 baris catatan meter).
 -- Jalankan di Supabase SQL Editor SETELAH kamu login sekali lewat aplikasi,
 -- dan setelah schema.sql dijalankan. Ganti email di bawah lebih dulu.
 
 DO $$
 DECLARE u uuid;
 BEGIN
-  SELECT id INTO u FROM auth.users WHERE email = 'GANTI@EMAIL.COM';
+  SELECT id INTO u FROM auth.users WHERE email = 'hakim_jz@yahoo.com';
   IF u IS NULL THEN RAISE EXCEPTION 'Akun belum ada. Login dulu lewat aplikasi, lalu jalankan ulang.'; END IF;
 
   INSERT INTO public.kwhlog_readings (id, user_id, ts, type, kwh, added, rp, tags, suhu, note) VALUES
@@ -69,6 +69,28 @@ BEGIN
   ('r-202609201758', u, '2026-09-20 17:58:00', 'reading', 175.8, NULL, NULL, ARRAY['cuci','pompa']::text[], NULL, 'nyuci pompa ac br nyala'),
   ('r-202609210721', u, '2026-09-21 07:21:00', 'reading', 170.1, NULL, NULL, '{}'::text[], NULL, NULL),
   ('r-202609211426', u, '2026-09-21 14:26:00', 'reading', 169.46, NULL, NULL, '{}'::text[], NULL, NULL),
-  ('r-202609220710', u, '2026-09-22 07:10:00', 'reading', 164.54, NULL, NULL, '{}'::text[], NULL, NULL)
+  ('r-202609220710', u, '2026-09-22 07:10:00', 'reading', 164.54, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609221715', u, '2026-09-22 17:15:00', 'reading', 163.8, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609230711', u, '2026-09-23 07:11:00', 'reading', 160.66, NULL, NULL, ARRAY['noac']::text[], NULL, 'ac ga nyala, tp laptop monitor nyala sampe jam 3'),
+  ('r-202609231713', u, '2026-09-23 17:13:00', 'reading', 159.7, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609240711', u, '2026-09-24 07:11:00', 'reading', 153.35, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609241715', u, '2026-09-24 17:15:00', 'reading', 152.72, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609250707', u, '2026-09-25 07:07:00', 'reading', 147.85, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609251717', u, '2026-09-25 17:17:00', 'reading', 147.05, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609260752', u, '2026-09-26 07:52:00', 'reading', 141.22, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609261710', u, '2026-09-26 17:10:00', 'reading', 137.43, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609270634', u, '2026-09-27 06:34:00', 'reading', 131.9, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609271824', u, '2026-09-27 18:24:00', 'reading', 128.5, NULL, NULL, '{}'::text[], NULL, 'ac nyala jam 4'),
+  ('r-202609280710', u, '2026-09-28 07:10:00', 'reading', 124.45, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609281718', u, '2026-09-28 17:18:00', 'reading', 123.62, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609282046', u, '2026-09-28 20:46:00', 'reading', 121.66, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609290718', u, '2026-09-29 07:18:00', 'reading', 118.15, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609291712', u, '2026-09-29 17:12:00', 'reading', 117.39, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609300629', u, '2026-09-30 06:29:00', 'reading', 112.69, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609301714', u, '2026-09-30 17:14:00', 'reading', 111.7, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202609301803', u, '2026-09-30 18:03:00', 'reading', 111.62, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202610010713', u, '2026-10-01 07:13:00', 'reading', 107.5, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202610011716', u, '2026-10-01 17:16:00', 'reading', 106.81, NULL, NULL, '{}'::text[], NULL, NULL),
+  ('r-202610020630', u, '2026-10-02 06:30:00', 'reading', 101.37, NULL, NULL, '{}'::text[], NULL, NULL)
   ON CONFLICT (user_id, id) DO NOTHING;
 END $$;

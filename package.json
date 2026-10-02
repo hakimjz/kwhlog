@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test/calc.test.js && node test/rows.test.js"
+    "test": "node test/calc.test.js && node test/rows.test.js && node test/report.test.js"
   }
 }
