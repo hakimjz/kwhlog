@@ -170,7 +170,7 @@ function renderHist(c) {
     const tags = [...x.tags.map(t => TAGLABEL[t] + (t === 'ac' && x.cur.suhu ? ' ' + x.cur.suhu + '°C' : ''))];
     items.push(`<li class="${topup ? 'topup' : ''}">
       <div class="hrow"><div class="htime">${range} <span class="dim">(${dur(x.h)})</span>${pend(x.cur.id)}</div><div class="hval">${x.bad ? '—' : rp(x.cost)}</div></div>
-      <div class="hmeta">${x.bad ? '' : `${nf(x.used, 2)} kWh, rata-rata ${nf(x.kw, 2)} kW`}${topup ? `${x.bad ? '' : '. '}Beli token ${x.cur.rp ? rp(x.cur.rp) + ', ' : ''}+${nf(x.cur.added || 0, 2)} kWh` : ''}</div>
+      <div class="hmeta">${x.bad ? '' : `${nf(x.used, 2)} kWh, rata-rata ${nf(x.kw, 2)} kW, ${rp(x.kw * x.rate)} per jam`}${topup ? `${x.bad ? '' : '. '}Beli token ${x.cur.rp ? rp(x.cur.rp) + ', ' : ''}+${nf(x.cur.added || 0, 2)} kWh` : ''}</div>
       ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
       ${x.cur.note ? `<div class="hmeta">${esc(x.cur.note)}</div>` : ''}
       ${x.flags.map(f => `<div class="flag ${f.bad ? 'bad' : ''}">${esc(f.t)}</div>`).join('')}
