@@ -75,7 +75,7 @@ p.lead{color:var(--muted);margin:4px 0 12px;font-size:.92rem;max-width:62ch}
 /* Slot bar */
 .slotbar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:4px 0 12px;background:var(--line)}
 .slotbar span{display:block;height:100%}
-.slotrows{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 12px;align-items:center;font-size:.9rem}
+.slotrows{display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px 12px;align-items:center;font-size:.9rem}
 .sw{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:6px}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .dim{color:var(--muted)}

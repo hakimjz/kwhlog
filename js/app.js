@@ -13,6 +13,11 @@ function fmtHM(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
 const pend = id => store.isPending(id) ? ' <span class="pend" title="Belum terkirim ke cloud">● belum terkirim</span>' : '';
 function dur(h) { const m = Math.round(h * 60); return Math.floor(m / 60) + ':' + pad(m % 60); }
 
+// Baris "Kapan listrik terpakai": slot, kWh, rupiah, persen. kwh/cost = {pagi, siang, sore, malam}.
+function slotRowsHtml(kwh, cost, tot) {
+  return `<div class="slotrows">${SLOTS.map(s => `<div><span class="sw" style="background:${s.c}"></span>${s.label} <span class="dim">${s.range}</span></div><div></div><div class="num">${nf(kwh[s.k], 1)} kWh</div><div class="num">${rp(cost[s.k])}</div><div class="num"><b>${nf(kwh[s.k] / tot * 100, 0)}%</b></div>`).join('')}</div>`;
+}
+
 /* ---------- render ---------- */
 function calc() { return compute(store.getEntries(), store.getSettings()); }
 
@@ -49,7 +54,7 @@ function renderSummary(c) {
     <div class="stat"><div class="k">Tarif dipakai</div><div class="v">${rp(c.curRate)}</div><div class="s">${c.hasTopupRate ? 'dari pembelian token terakhir' : 'tarif default, per kWh'}</div></div>`;
   const tot = SLOTS.reduce((s, x) => s + c.slotT[x.k], 0) || 1;
   $('slots').innerHTML = `<div class="slotbar" role="img" aria-label="Pembagian pemakaian per waktu">${SLOTS.map(s => `<span style="width:${c.slotT[s.k] / tot * 100}%;background:${s.c}"></span>`).join('')}</div>
-    <div class="slotrows">${SLOTS.map(s => `<div><span class="sw" style="background:${s.c}"></span>${s.label} <span class="dim">${s.range}</span></div><div></div><div class="num">${nf(c.slotT[s.k], 1)} kWh</div><div class="num"><b>${nf(c.slotT[s.k] / tot * 100, 0)}%</b></div>`).join('')}</div>`;
+    ${slotRowsHtml(c.slotT, c.slotC, tot)}`;
   const li = [];
   const nightPct = (c.slotT.sore + c.slotT.malam) / tot * 100;
   li.push(`${nf(nightPct, 0)}% pemakaian terjadi antara 17:00 dan 05:00. Penghematan paling terasa kalau dimulai dari jam-jam ini.`);
@@ -97,6 +102,7 @@ const STATUS_NOTE = {
 };
 
 function periodLabel(kind, start) {
+  if (kind === 'day') return start.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
   if (kind === 'month') return MONTHS[start.getMonth()] + ' ' + start.getFullYear();
   const last = new Date(+shiftPeriod('week', start, 1) - 6 * 36e5); // hari listrik terakhir (Minggu)
   return dShort(start) + ' – ' + dShort(last) + ' ' + last.getFullYear();
@@ -118,33 +124,41 @@ function renderReport(c) {
   $('rpNext').disabled = +start >= +span.last;
 
   const r = periodReport(c, rpKind, start);
-  const unit = rpKind === 'month' ? 'bulan' : 'minggu';
+  const isDay = rpKind === 'day';
+  const unit = isDay ? 'hari' : rpKind === 'month' ? 'bulan' : 'minggu';
   if (r.status === 'kosong') { $('rpBody').innerHTML = '<div class="rpnote">Belum ada data di periode ini.</div>'; return; }
   let html = '';
-  if (r.status !== 'penuh') html += `<div class="rpnote"><b>Data belum penuh.</b> ${STATUS_NOTE[r.status]} Tercakup ${nf(r.covH / 24, 1)} dari ${nf(r.lenH / 24, 0)} hari, jadi total di bawah bukan angka satu ${unit} penuh.</div>`;
+  const cover = isDay ? `${nf(r.covH, 1)} dari ${nf(r.lenH, 0)} jam` : `${nf(r.covH / 24, 1)} dari ${nf(r.lenH / 24, 0)} hari`;
+  if (r.status !== 'penuh') html += `<div class="rpnote"><b>Data belum penuh.</b> ${STATUS_NOTE[r.status]} Tercakup ${cover}, jadi total di bawah bukan angka satu ${unit} penuh.</div>`;
+  else if (isDay) html += '<div class="lead" style="margin:0 0 10px">Satu hari listrik dihitung dari 05:00 sampai 05:00 berikutnya.</div>';
 
+  // per hari: rata-rata beban per jam; per minggu/bulan: rata-rata harian
+  const perHour = r.covH > 0 ? r.kwh / r.covH : null, perHourPrev = r.prev.covH > 0 ? r.prev.kwh / r.prev.covH : null;
   html += `<div class="stats">
     <div class="stat"><div class="k">Total pemakaian</div><div class="v">${nf(r.kwh, 1)} kWh</div><div class="s">${rp(r.cost)}</div></div>
-    <div class="stat"><div class="k">Rata-rata harian</div><div class="v">${r.avgDaily == null ? '—' : nf(r.avgDaily, 1) + ' kWh'}</div><div class="s">${r.avgDailyCost == null ? '' : rp(r.avgDailyCost) + ' per hari'}</div></div>
+    ${isDay
+      ? `<div class="stat"><div class="k">Rata-rata per jam</div><div class="v">${perHour == null ? '—' : nf(perHour, 2) + ' kW'}</div><div class="s">${perHour == null ? '' : rp(r.cost / r.covH) + ' per jam'}</div></div>`
+      : `<div class="stat"><div class="k">Rata-rata harian</div><div class="v">${r.avgDaily == null ? '—' : nf(r.avgDaily, 1) + ' kWh'}</div><div class="s">${r.avgDailyCost == null ? '' : rp(r.avgDailyCost) + ' per hari'}</div></div>`}
   </div>`;
 
   const tot = SLOTS.reduce((s, x) => s + r.slotKwh[x.k], 0) || 1;
   html += `<h2>Kapan listrik terpakai</h2>
     <div class="slotbar" role="img" aria-label="Pembagian pemakaian per waktu">${SLOTS.map(s => `<span style="width:${r.slotKwh[s.k] / tot * 100}%;background:${s.c}"></span>`).join('')}</div>
-    <div class="slotrows">${SLOTS.map(s => `<div><span class="sw" style="background:${s.c}"></span>${s.label} <span class="dim">${s.range}</span></div><div></div><div class="num">${nf(r.slotKwh[s.k], 1)} kWh</div><div class="num"><b>${nf(r.slotKwh[s.k] / tot * 100, 0)}%</b></div>`).join('')}</div>`;
+    ${slotRowsHtml(r.slotKwh, r.slotCost, tot)}`;
 
   const prevLabel = periodLabel(rpKind, r.prev.start), cmp = r.compare;
   html += `<h2>Dibanding ${unit} sebelumnya</h2>`;
   if (cmp.comparable) {
     html += `<div class="cmp"><div>Total kWh</div><div class="delta">${sgn(cmp.kwhPct)}</div>
       <div>Total rupiah</div><div class="delta">${sgn(cmp.rpPct)}</div>
-      <div>Rata-rata harian</div><div class="delta">${sgn(cmp.dailyPct)}</div></div>
+      ${isDay ? '' : `<div>Rata-rata harian</div><div class="delta">${sgn(cmp.dailyPct)}</div>`}</div>
       <p class="lead">Dibanding ${esc(prevLabel)} (${nf(r.prev.kwh, 1)} kWh, ${rp(r.prev.cost)}). Tarif bisa berbeda di antara dua periode.</p>`;
   } else if (cmp.dailyPct != null) {
-    html += `<div class="cmp"><div>Rata-rata harian</div><div class="delta">${sgn(cmp.dailyPct)}</div></div>
-      <p class="lead">Total tidak dibandingkan karena ${r.status !== 'penuh' ? 'periode ini' : 'periode sebelumnya (' + esc(prevLabel) + ')'} belum penuh. Rata-rata harian dihitung per jam yang tercakup data (${nf(r.avgDaily, 1)} lawan ${nf(r.prev.avgDaily, 1)} kWh/hari).</p>`;
+    html += `<div class="cmp"><div>${isDay ? 'Rata-rata per jam' : 'Rata-rata harian'}</div><div class="delta">${sgn(cmp.dailyPct)}</div></div>
+      <p class="lead">Total tidak dibandingkan karena ${r.status !== 'penuh' ? 'periode ini' : 'periode sebelumnya (' + esc(prevLabel) + ')'} belum penuh. ${isDay ? `Dibandingkan per jam yang tercakup data (${nf(perHour, 2)} lawan ${nf(perHourPrev, 2)} kW).` : `Rata-rata harian dihitung per jam yang tercakup data (${nf(r.avgDaily, 1)} lawan ${nf(r.prev.avgDaily, 1)} kWh/hari).`}</p>`;
   } else {
-    html += `<p class="lead">Belum bisa dibandingkan: ${r.prev.covH < 24 ? 'data ' + unit + ' sebelumnya (' + esc(prevLabel) + ') kurang dari satu hari' : 'data periode ini kurang dari satu hari'}.</p>`;
+    const minTxt = isDay ? 'kurang dari 12 jam' : 'kurang dari satu hari', minH = isDay ? 12 : 24;
+    html += `<p class="lead">Belum bisa dibandingkan: ${r.prev.covH < minH ? 'data ' + unit + ' sebelumnya (' + esc(prevLabel) + ') ' + minTxt : 'data periode ini ' + minTxt}.</p>`;
   }
 
   const t = r.topups;

@@ -15,6 +15,12 @@ assert.equal(fmtTs(periodStart('week', at('2026-09-07T04:59'))), '2026-08-31T05:
 assert.equal(fmtTs(periodStart('week', at('2026-09-13T23:00'))), '2026-09-07T05:00');  // Minggu malam masih minggu itu
 assert.equal(fmtTs(periodStart('month', at('2026-10-01T04:59'))), '2026-09-01T05:00');
 assert.equal(fmtTs(periodStart('month', at('2026-10-01T05:00'))), '2026-10-01T05:00');
+assert.equal(fmtTs(periodStart('day', at('2026-09-09T12:00'))), '2026-09-09T05:00');
+assert.equal(fmtTs(periodStart('day', at('2026-09-09T04:59'))), '2026-09-08T05:00');  // dini hari masih hari listrik kemarin
+assert.equal(fmtTs(periodStart('day', at('2026-09-09T05:00'))), '2026-09-09T05:00');
+assert.equal(fmtTs(periodStart('day', at('2026-10-01T02:00'))), '2026-09-30T05:00');  // lintas bulan
+assert.equal(fmtTs(shiftPeriod('day', at('2026-09-30T05:00'), 1)), '2026-10-01T05:00');
+assert.equal(fmtTs(shiftPeriod('day', at('2026-01-01T05:00'), -1)), '2025-12-31T05:00');
 assert.equal(fmtTs(shiftPeriod('week', at('2026-09-07T05:00'), -1)), '2026-08-31T05:00');
 assert.equal(fmtTs(shiftPeriod('month', at('2026-01-01T05:00'), -1)), '2025-12-01T05:00');
 assert.equal(fmtTs(shiftPeriod('month', at('2026-12-01T05:00'), 1)), '2027-01-01T05:00');
@@ -50,6 +56,34 @@ assert.equal(fmtTs(shiftPeriod('month', at('2026-12-01T05:00'), 1)), '2027-01-01
   near(r.compare.kwhPct, 100, 1e-6, '+100% kWh');
   near(r.compare.rpPct, 100, 1e-6, '+100% Rp');
   near(r.compare.dailyPct, 100, 1e-6, '+100% harian');
+}
+
+/* ---- harian: hari listrik 05:00-05:00, rupiah per slot ---- */
+{
+  // 1 kW hari pertama, 2 kW hari kedua, tarif 1000
+  const e = [R('a', '2026-09-08T05:00', 1000), R('b', '2026-09-09T05:00', 976), R('c', '2026-09-10T05:00', 928)];
+  const c = compute(e, { tarif: 1000 });
+  const d2 = periodReport(c, 'day', at('2026-09-09T05:00'));
+  assert.equal(d2.status, 'penuh');
+  near(d2.kwh, 48, 1e-6, 'kWh hari ke-2');
+  near(d2.cost, 48000, 1e-3, 'Rp hari ke-2');
+  near(d2.slotKwh.sore, 2 * 5, 1e-6, 'sore 5 jam x 2 kW');
+  near(d2.slotCost.sore, 2 * 5 * 1000, 1e-3, 'Rp sore');
+  near(d2.slotCost.malam, 2 * 7 * 1000, 1e-3, 'Rp malam');
+  assert.equal(d2.compare.comparable, true);
+  near(d2.compare.kwhPct, 100, 1e-6, 'hari ke-2 +100%');
+  near(d2.compare.rpPct, 100, 1e-6, 'Rp hari ke-2 +100%');
+  // hari yang baru berjalan 13 jam: total tidak dibandingkan, per jam tetap (>= 12 jam)
+  const c2 = compute([R('a', '2026-09-08T05:00', 1000), R('b', '2026-09-09T05:00', 976), R('c', '2026-09-09T18:00', 950)], { tarif: 1000 });
+  const run = periodReport(c2, 'day', at('2026-09-09T05:00'));
+  assert.equal(run.status, 'berjalan');
+  assert.equal(run.compare.kwhPct, null);
+  near(run.compare.dailyPct, 100, 1e-6, 'per jam 1 kW -> 2 kW');
+  // hari dengan 20 jam tercakup dianggap penuh, 19 jam belum
+  const full = compute([R('a', '2026-09-09T05:00', 100), R('b', '2026-09-10T05:00', 90)]);
+  assert.equal(aggregatePeriod(full, 'day', at('2026-09-09T05:00')).status, 'penuh');
+  const gap = compute([R('a', '2026-09-09T10:00', 100), R('b', '2026-09-10T06:00', 90)]); // mulai 10:00 -> 19 jam
+  assert.equal(aggregatePeriod(gap, 'day', at('2026-09-09T05:00')).status, 'parsial');
 }
 
 /* ---- periode belum penuh tidak dibandingkan total ---- */
@@ -107,19 +141,33 @@ assert.equal(fmtTs(shiftPeriod('month', at('2026-12-01T05:00'), 1)), '2027-01-01
   });
   const c = compute(entries);
 
-  for (const kind of ['week', 'month']) {
+  for (const kind of ['day', 'week', 'month']) {
     const span = periodSpan(c, kind);
-    let sumK = 0, sumC = 0, sumH = 0; const sumS = { pagi: 0, siang: 0, sore: 0, malam: 0 };
+    let sumK = 0, sumC = 0, sumH = 0; const sumS = { pagi: 0, siang: 0, sore: 0, malam: 0 }, sumSC = { pagi: 0, siang: 0, sore: 0, malam: 0 };
     for (let s = span.first; +s <= +span.last; s = shiftPeriod(kind, s, 1)) {
       const a = aggregatePeriod(c, kind, s);
       sumK += a.kwh; sumC += a.cost; sumH += a.covH;
-      for (const k of Object.keys(sumS)) sumS[k] += a.slotKwh[k];
+      for (const k of Object.keys(sumS)) { sumS[k] += a.slotKwh[k]; sumSC[k] += a.slotCost[k]; }
+      near(a.slotCost.pagi + a.slotCost.siang + a.slotCost.sore + a.slotCost.malam, a.cost, 1e-6, kind + ': rupiah slot menjumlah ke total periode');
     }
     near(sumK, c.totalKwh, 1e-9, kind + ': jumlah kWh semua periode');
     near(sumC, c.totalCost, 1e-6, kind + ': jumlah Rp semua periode');
     near(sumH, c.totalH, 1e-9, kind + ': jumlah jam semua periode');
-    for (const k of Object.keys(sumS)) near(sumS[k], c.slotT[k], 1e-9, kind + ': slot ' + k);
+    for (const k of Object.keys(sumS)) {
+      near(sumS[k], c.slotT[k], 1e-9, kind + ': slot ' + k);
+      near(sumSC[k], c.slotC[k], 1e-6, kind + ': rupiah slot ' + k);
+    }
   }
+
+  // Laporan harian = hari listrik di c.days (kunci tanggal mulai hari, batas 05:00)
+  for (const d of ['2026-09-05', '2026-09-13', '2026-09-20']) {
+    const k = c.days[d], a = aggregatePeriod(c, 'day', at(d + 'T05:00'));
+    near(a.kwh, k.pagi + k.siang + k.sore + k.malam, 1e-9, 'hari ' + d + ' = c.days');
+    near(a.covH, k.cov, 1e-9, 'hari ' + d + ': jam tercakup');
+    assert.equal(a.status, k.cov >= 20 ? 'penuh' : 'parsial', 'hari ' + d + ': status ikut aturan 20 jam');
+  }
+  assert.equal(aggregatePeriod(c, 'day', at('2026-09-02T05:00')).status, 'parsial'); // data baru mulai 17:27
+  assert.equal(aggregatePeriod(c, 'day', at('2026-09-22T05:00')).status, 'berjalan');
 
   // Minggu 14-21 Sep (05:00) penuh dan harus sama dengan jumlah hari listrik 14..20 Sep di c.days
   const w = periodStart('week', at('2026-09-16T12:00'));

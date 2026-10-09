@@ -151,21 +151,27 @@ export function compute(entries, settings = {}) {
   };
 }
 
-/* ---------- laporan periode (minggu / bulan) ---------- */
+/* ---------- laporan periode (hari / minggu / bulan) ---------- */
 // Batas periode jatuh pada jam 05:00 (batas hari listrik), bukan tengah malam.
-// Minggu mulai Senin 05:00; bulan mulai tanggal 1 05:00. Interval yang melewati batas dibagi per potongan
+// Hari mulai 05:00; minggu mulai Senin 05:00; bulan mulai tanggal 1 05:00. Interval yang melewati batas dibagi per potongan
 // 15 menit (forEachChunk), tiap potongan masuk ke periode yang memuat titik tengahnya.
-export const FULL_RATIO = 0.95; // periode yang sudah lewat dianggap penuh bila >= 95% jamnya tercakup data
+// kind: 'day' (hari listrik 05:00-05:00), 'week', atau 'month'.
+// Periode yang sudah lewat dianggap penuh bila cakupan datanya cukup: minggu/bulan >= 95% jamnya,
+// hari >= 20 dari 24 jam (aturan "hari belum penuh" di CLAUDE.md, sama dengan grafik harian).
+export const FULL_RATIO = 0.95;
+export const DAY_FULL_RATIO = 20 / 24;
 
 // Awal periode yang memuat waktu d.
 export function periodStart(kind, d) {
   const x = new Date(+d - 5 * 36e5); // sebelum 05:00 masih termasuk hari listrik sebelumnya
+  if (kind === 'day') return new Date(x.getFullYear(), x.getMonth(), x.getDate(), 5, 0);
   if (kind === 'month') return new Date(x.getFullYear(), x.getMonth(), 1, 5, 0);
   const dow = (x.getDay() + 6) % 7; // Senin = 0
   return new Date(x.getFullYear(), x.getMonth(), x.getDate() - dow, 5, 0);
 }
 // Awal periode n langkah dari `start` (n negatif = sebelumnya).
 export function shiftPeriod(kind, start, n) {
+  if (kind === 'day') return new Date(start.getFullYear(), start.getMonth(), start.getDate() + n, 5, 0);
   if (kind === 'month') return new Date(start.getFullYear(), start.getMonth() + n, 1, 5, 0);
   return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7 * n, 5, 0);
 }
@@ -180,12 +186,13 @@ export function aggregatePeriod(c, kind, start) {
   const end = shiftPeriod(kind, start, 1);
   const lenH = (end - start) / 36e5;
   const slotKwh = { pagi: 0, siang: 0, sore: 0, malam: 0 };
+  const slotCost = { pagi: 0, siang: 0, sore: 0, malam: 0 };
   let kwh = 0, cost = 0, covH = 0;
   for (const x of c.valid) {
     if (+x.end <= +start || +x.start >= +end) continue;
     forEachChunk(x, (d, hh, k, s) => {
       if (+d < +start || +d >= +end) return;
-      kwh += k; cost += k * x.rate; covH += hh; slotKwh[s] += k;
+      kwh += k; cost += k * x.rate; covH += hh; slotKwh[s] += k; slotCost[s] += k * x.rate;
     });
   }
   const tops = c.list.filter(e => e.type === 'topup' && parseTs(e.ts) >= start && parseTs(e.ts) < end)
@@ -198,10 +205,10 @@ export function aggregatePeriod(c, kind, start) {
     avgRate: paid.length ? paid.reduce((s, t) => s + t.rp, 0) / paid.reduce((s, t) => s + t.added, 0) : null
   };
   const ended = !!c.lastD && +c.lastD >= +end;
-  const status = covH <= 0 ? 'kosong' : !ended ? 'berjalan' : covH / lenH < FULL_RATIO ? 'parsial' : 'penuh';
+  const status = covH <= 0 ? 'kosong' : !ended ? 'berjalan' : covH / lenH < (kind === 'day' ? DAY_FULL_RATIO : FULL_RATIO) ? 'parsial' : 'penuh';
   return {
     kind, start, end, lenH, covH, coverage: covH / lenH, status,
-    kwh, cost, slotKwh,
+    kwh, cost, slotKwh, slotCost,
     avgDaily: covH > 0 ? kwh / covH * 24 : null, // total / jam tercakup x 24, bukan dibagi jumlah tanggal
     avgDailyCost: covH > 0 ? cost / covH * 24 : null,
     topups
@@ -212,12 +219,14 @@ const pct = (a, b) => (b > 0 && a != null ? (a - b) / b * 100 : null);
 
 // Laporan satu periode + perbandingan dengan periode sebelumnya.
 // Total (kWh dan Rp) hanya dibandingkan kalau KEDUA periode penuh; kalau tidak, hanya rata-rata harian
-// (itu pun hanya bila masing-masing punya data >= 24 jam), karena total periode yang belum penuh tidak setara.
+// (itu pun hanya bila masing-masing punya data >= 24 jam; untuk hari >= 12 jam), karena total periode yang belum
+// penuh tidak setara.
 export function periodReport(c, kind, start) {
   const cur = aggregatePeriod(c, kind, start);
   const prev = aggregatePeriod(c, kind, shiftPeriod(kind, start, -1));
   const comparable = cur.status === 'penuh' && prev.status === 'penuh';
-  const dailyOk = cur.covH >= 24 && prev.covH >= 24;
+  const minH = kind === 'day' ? 12 : 24;
+  const dailyOk = cur.covH >= minH && prev.covH >= minH;
   return {
     ...cur, prev,
     compare: {
